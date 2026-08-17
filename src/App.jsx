@@ -1,40 +1,33 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Home from "./pages/Home.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import ForgotPassword from "./pages/ForgotPassword.jsx";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import Profile from "./pages/Profile";
 
 import "./App.css";
 
 function App() {
   return (
     <BrowserRouter>
-
       <Routes>
 
-        <Route
-          path="/"
-          element={<Home />}
-        />
+        {/* Home */}
+        <Route path="/" element={<Home />} />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+        {/* Authentication */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        <Route
-          path="/register"
-          element={<Register />}
-        />
+        {/* Job Seeker Profile */}
+        <Route path="/profile" element={<Profile />} />
 
-        <Route
-          path="/forgot-password"
-          element={<ForgotPassword />}
-        />
+        {/* Fallback */}
+        <Route path="*" element={<Home />} />
 
       </Routes>
-
     </BrowserRouter>
   );
 }
