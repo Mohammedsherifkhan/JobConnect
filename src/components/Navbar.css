@@ -1,0 +1,52 @@
+.navbar {
+  width: 100%;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6%;
+  background: #07111f;
+  box-sizing: border-box;
+}
+
+.logo {
+  text-decoration: none;
+  font-size: 26px;
+  font-weight: 800;
+  color: white;
+}
+
+.logo span {
+  color: #38bdf8;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 35px;
+}
+
+.nav-links a {
+  color: #e5e7eb;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.nav-links a:hover {
+  color: #38bdf8;
+}
+
+/* Register highlight */
+.nav-links .register-btn {
+  background: #38bdf8;
+  color: #06111f;
+  padding: 13px 24px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.nav-links .register-btn:hover {
+  background: #7dd3fc;
+  color: #06111f;
+}

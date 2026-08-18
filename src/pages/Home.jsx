@@ -124,51 +124,6 @@ function Home() {
   return (
     <div className="home-page">
 
-      {/* NAVBAR */}
-
-      <nav className="navbar">
-
-        <Link to="/" className="logo">
-          Job<span>Connect</span>
-        </Link>
-
-        <div className="nav-links">
-
-          <a href="#jobs">
-            Find Jobs
-          </a>
-
-          <a href="#companies">
-            Companies
-          </a>
-
-          <a href="#about">
-            About
-          </a>
-
-        </div>
-
-        <div className="nav-actions">
-
-          <Link
-            to="/login"
-            className="login-link"
-          >
-            Login
-          </Link>
-
-          <Link
-            to="/register"
-            className="nav-register"
-          >
-            Register
-          </Link>
-
-        </div>
-
-      </nav>
-
-
       {/* HERO */}
 
       <section className="job-hero">
