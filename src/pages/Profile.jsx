@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./../Profile.css";
+import "../Profile.css";
 
 function Profile() {
   const [editing, setEditing] = useState(false);
@@ -22,7 +22,6 @@ function Profile() {
   ]);
 
   const [newSkill, setNewSkill] = useState("");
-
   const [photo, setPhoto] = useState(null);
   const [resume, setResume] = useState(null);
 
@@ -34,28 +33,65 @@ function Profile() {
   };
 
   const handlePhotoChange = (event) => {
-    const file = event.target.files[0];
+    const file = event.target.files?.[0];
 
-    if (file) {
-      setPhoto(URL.createObjectURL(file));
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
     }
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Profile image must be less than 2 MB.");
+      return;
+    }
+
+    setPhoto(URL.createObjectURL(file));
   };
 
   const handleResumeChange = (event) => {
-    const file = event.target.files[0];
+    const file = event.target.files?.[0];
 
-    if (file) {
-      setResume(file);
+    if (!file) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    const extensionAllowed = /\.(pdf|doc|docx)$/i.test(file.name);
+
+    if (!allowedTypes.includes(file.type) && !extensionAllowed) {
+      alert("Please upload a PDF, DOC, or DOCX file.");
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Resume must be less than 5 MB.");
+      return;
+    }
+
+    setResume(file);
   };
 
   const addSkill = () => {
     const skill = newSkill.trim();
 
-    if (skill && !skills.includes(skill)) {
-      setSkills([...skills, skill]);
+    if (!skill) return;
+
+    const alreadyExists = skills.some(
+      (item) => item.toLowerCase() === skill.toLowerCase()
+    );
+
+    if (alreadyExists) {
       setNewSkill("");
+      return;
     }
+
+    setSkills([...skills, skill]);
+    setNewSkill("");
   };
 
   const removeSkill = (skillToRemove) => {
@@ -66,40 +102,18 @@ function Profile() {
 
   const saveProfile = () => {
     setEditing(false);
-
     alert("Profile saved successfully!");
   };
 
   return (
     <div className="profile-page">
 
-      {/* NAVBAR */}
-
-      <nav className="profile-navbar">
-
-        <div className="profile-logo">
-          Job<span>Connect</span>
-        </div>
-
-        <div className="profile-nav-links">
-          <a href="/">Home</a>
-          <a href="/#jobs">Find Jobs</a>
-          <a href="/profile">Profile</a>
-        </div>
-
-      </nav>
-
-
-      {/* PROFILE HEADER */}
-
       <section className="profile-header">
-
         <div className="profile-cover"></div>
 
         <div className="profile-header-content">
 
           <div className="profile-photo-container">
-
             {photo ? (
               <img
                 src={photo}
@@ -108,40 +122,28 @@ function Profile() {
               />
             ) : (
               <div className="profile-photo placeholder">
-                {profile.name.charAt(0)}
+                {profile.name.charAt(0).toUpperCase()}
               </div>
             )}
 
             {editing && (
               <label className="photo-edit">
-
                 📷
-
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handlePhotoChange}
                   hidden
                 />
-
               </label>
             )}
-
           </div>
-
 
           <div className="profile-title">
-
             <h1>{profile.name}</h1>
-
             <p>{profile.headline}</p>
-
-            <span>
-              📍 {profile.location}
-            </span>
-
+            <span>📍 {profile.location}</span>
           </div>
-
 
           <button
             className="edit-profile-btn"
@@ -153,38 +155,25 @@ function Profile() {
           </button>
 
         </div>
-
       </section>
-
-
-      {/* MAIN */}
 
       <main className="profile-main">
 
         <div className="profile-grid">
 
-          {/* LEFT */}
-
           <div className="profile-left">
 
-            {/* PERSONAL INFORMATION */}
-
+            {/* Personal Information */}
             <section className="profile-card">
 
               <div className="card-heading">
-
-                <div>
-                  <span>PROFILE</span>
-                  <h2>Personal Information</h2>
-                </div>
-
+                <span>PROFILE</span>
+                <h2>Personal Information</h2>
               </div>
-
 
               <div className="form-grid">
 
                 <div className="form-field">
-
                   <label>Full Name</label>
 
                   {editing ? (
@@ -196,29 +185,24 @@ function Profile() {
                   ) : (
                     <p>{profile.name}</p>
                   )}
-
                 </div>
 
-
                 <div className="form-field">
-
                   <label>Email</label>
 
                   {editing ? (
                     <input
                       name="email"
+                      type="email"
                       value={profile.email}
                       onChange={handleChange}
                     />
                   ) : (
                     <p>{profile.email}</p>
                   )}
-
                 </div>
 
-
                 <div className="form-field">
-
                   <label>Phone</label>
 
                   {editing ? (
@@ -230,12 +214,9 @@ function Profile() {
                   ) : (
                     <p>{profile.phone}</p>
                   )}
-
                 </div>
 
-
                 <div className="form-field">
-
                   <label>Location</label>
 
                   {editing ? (
@@ -247,155 +228,109 @@ function Profile() {
                   ) : (
                     <p>{profile.location}</p>
                   )}
-
                 </div>
 
               </div>
 
             </section>
 
-
-            {/* ABOUT */}
-
+            {/* About */}
             <section className="profile-card">
 
               <div className="card-heading">
-
-                <div>
-                  <span>ABOUT</span>
-                  <h2>About Me</h2>
-                </div>
-
+                <span>ABOUT</span>
+                <h2>About Me</h2>
               </div>
 
               {editing ? (
                 <textarea
                   name="bio"
+                  rows="5"
                   value={profile.bio}
                   onChange={handleChange}
-                  rows="5"
                 />
               ) : (
-                <p className="bio-text">
-                  {profile.bio}
-                </p>
+                <p className="bio-text">{profile.bio}</p>
               )}
 
             </section>
 
-
-            {/* SKILLS */}
-
+            {/* Skills */}
             <section className="profile-card">
 
               <div className="card-heading">
-
-                <div>
-                  <span>EXPERTISE</span>
-                  <h2>Skills</h2>
-                </div>
-
+                <span>EXPERTISE</span>
+                <h2>Skills</h2>
               </div>
 
-
               <div className="skills-list">
-
                 {skills.map((skill) => (
-
-                  <div
-                    className="skill-tag"
-                    key={skill}
-                  >
+                  <div className="skill-tag" key={skill}>
                     {skill}
 
                     {editing && (
                       <button
-                        onClick={() =>
-                          removeSkill(skill)
-                        }
+                        type="button"
+                        onClick={() => removeSkill(skill)}
                       >
                         ×
                       </button>
                     )}
-
                   </div>
-
                 ))}
-
               </div>
 
-
               {editing && (
-
                 <div className="add-skill">
-
                   <input
                     type="text"
-                    placeholder="Add a skill..."
+                    placeholder="Add a skill"
                     value={newSkill}
                     onChange={(event) =>
                       setNewSkill(event.target.value)
                     }
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
+                        event.preventDefault();
                         addSkill();
                       }
                     }}
                   />
 
-                  <button onClick={addSkill}>
+                  <button type="button" onClick={addSkill}>
                     + Add
                   </button>
-
                 </div>
-
               )}
 
             </section>
 
           </div>
 
-
-          {/* RIGHT */}
-
           <aside className="profile-right">
 
-            {/* RESUME */}
-
-            <section className="profile-card resume-card">
+            {/* Resume */}
+            <section className="profile-card">
 
               <div className="card-heading">
-
-                <div>
-                  <span>DOCUMENT</span>
-                  <h2>My Resume</h2>
-                </div>
-
+                <span>DOCUMENT</span>
+                <h2>My Resume</h2>
               </div>
 
-
               {resume ? (
-
                 <div className="resume-file">
 
-                  <div className="resume-icon">
-                    📄
-                  </div>
+                  <div className="resume-icon">📄</div>
 
                   <div className="resume-info">
-
-                    <strong>
-                      {resume.name}
-                    </strong>
-
+                    <strong>{resume.name}</strong>
                     <small>
-                      {(resume.size / 1024 / 1024).toFixed(2)}
-                      {" "}MB
+                      {(resume.size / 1024 / 1024).toFixed(2)} MB
                     </small>
-
                   </div>
 
                   <button
+                    type="button"
                     className="remove-resume"
                     onClick={() => setResume(null)}
                   >
@@ -403,21 +338,15 @@ function Profile() {
                   </button>
 
                 </div>
-
               ) : (
-
                 <label className="resume-upload">
 
-                  <div className="upload-icon">
-                    ↑
-                  </div>
+                  <div className="upload-icon">↑</div>
 
-                  <strong>
-                    Upload your resume
-                  </strong>
+                  <strong>Upload your resume</strong>
 
                   <span>
-                    PDF, DOC or DOCX
+                    PDF, DOC or DOCX • Max 5 MB
                   </span>
 
                   <input
@@ -428,23 +357,16 @@ function Profile() {
                   />
 
                 </label>
-
               )}
 
             </section>
 
-
-            {/* PROFILE COMPLETION */}
-
+            {/* Profile Strength */}
             <section className="profile-card completion-card">
 
               <div className="card-heading">
-
-                <div>
-                  <span>PROFILE STATUS</span>
-                  <h2>Profile Strength</h2>
-                </div>
-
+                <span>PROFILE STATUS</span>
+                <h2>Profile Strength</h2>
               </div>
 
               <div className="completion-circle">
@@ -452,24 +374,18 @@ function Profile() {
               </div>
 
               <p>
-                Complete your profile to increase
-                your chances of getting noticed.
+                Complete your profile to improve your chances
+                of getting noticed by recruiters.
               </p>
 
             </section>
 
-
-            {/* QUICK INFO */}
-
+            {/* Career Information */}
             <section className="profile-card">
 
               <div className="card-heading">
-
-                <div>
-                  <span>CAREER</span>
-                  <h2>Quick Information</h2>
-                </div>
-
+                <span>CAREER</span>
+                <h2>Quick Information</h2>
               </div>
 
               <div className="quick-info">
