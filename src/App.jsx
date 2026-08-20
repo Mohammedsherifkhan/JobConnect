@@ -7,32 +7,31 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import Profile from "./pages/Profile";
+import PostJob from "./pages/PostJob";
 
 import "./App.css";
 
 function App() {
   return (
     <BrowserRouter>
+
+      {/* ONE NAVBAR ONLY */}
       <Navbar />
 
       <Routes>
+
+        {/* Candidate Pages */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/profile" element={<Profile />} />
 
-        {/* Temporary pages */}
-        <Route
-          path="/companies"
-          element={<h1 style={{ padding: "100px" }}>Companies</h1>}
-        />
+        {/* Recruiter Pages */}
+        <Route path="/post-job" element={<PostJob />} />
 
-        <Route
-          path="/about"
-          element={<h1 style={{ padding: "100px" }}>About JobConnect</h1>}
-        />
       </Routes>
+
     </BrowserRouter>
   );
 }

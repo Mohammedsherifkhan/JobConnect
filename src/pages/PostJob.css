@@ -1,0 +1,291 @@
+/* ================================
+   POST JOB PAGE
+================================ */
+
+.post-job-page {
+  min-height: 100vh;
+  padding: 110px 20px 80px;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(80, 180, 255, 0.12),
+      transparent 35%
+    ),
+    #07111f;
+  color: #ffffff;
+}
+
+
+/* ================================
+   CONTAINER
+================================ */
+
+.post-job-container {
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+
+/* ================================
+   HEADER
+================================ */
+
+.post-job-header {
+  text-align: center;
+  margin-bottom: 45px;
+}
+
+.post-job-header span {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 7px 14px;
+
+  border: 1px solid rgba(120, 210, 255, 0.25);
+  border-radius: 30px;
+
+  background: rgba(100, 200, 255, 0.08);
+
+  color: #8de8ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.post-job-header h1 {
+  margin: 0;
+
+  font-size: 42px;
+  font-weight: 800;
+
+  background: linear-gradient(
+    90deg,
+    #ffffff,
+    #7ee8ff
+  );
+
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.post-job-header p {
+  margin-top: 12px;
+
+  color: #91a4b8;
+  font-size: 16px;
+}
+
+
+/* ================================
+   FORM
+================================ */
+
+.post-job-form {
+  padding: 40px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+
+  background: rgba(18, 32, 51, 0.75);
+
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  backdrop-filter: blur(18px);
+}
+
+
+/* ================================
+   FORM GROUP
+================================ */
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 9px;
+
+  color: #dce8f3;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+
+/* ================================
+   INPUTS
+================================ */
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 14px 16px;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+
+  outline: none;
+
+  background: rgba(255, 255, 255, 0.045);
+
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  transition: 0.25s ease;
+}
+
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #718398;
+}
+
+
+/* ================================
+   FOCUS
+================================ */
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #69ddff;
+
+  background: rgba(255, 255, 255, 0.07);
+
+  box-shadow:
+    0 0 0 3px rgba(105, 221, 255, 0.08);
+}
+
+
+/* ================================
+   SELECT
+================================ */
+
+.form-group select {
+  cursor: pointer;
+}
+
+.form-group select option {
+  background: #101d2d;
+  color: #ffffff;
+}
+
+
+/* ================================
+   TEXTAREA
+================================ */
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 150px;
+  line-height: 1.6;
+}
+
+
+/* ================================
+   SMALL TEXT
+================================ */
+
+.form-group small {
+  display: block;
+
+  margin-top: 7px;
+
+  color: #718398;
+  font-size: 12px;
+}
+
+
+/* ================================
+   BUTTON
+================================ */
+
+.post-job-button {
+  width: 100%;
+
+  margin-top: 10px;
+  padding: 15px 20px;
+
+  border: none;
+  border-radius: 12px;
+
+  background: linear-gradient(
+    135deg,
+    #6ee7ff,
+    #45c7ff
+  );
+
+  color: #06111e;
+
+  font-size: 15px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.post-job-button:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 12px 30px rgba(69, 199, 255, 0.25);
+}
+
+.post-job-button:active {
+  transform: translateY(0);
+}
+
+
+/* ================================
+   MOBILE
+================================ */
+
+@media (max-width: 768px) {
+
+  .post-job-page {
+    padding: 90px 15px 50px;
+  }
+
+  .post-job-header h1 {
+    font-size: 32px;
+  }
+
+  .post-job-form {
+    padding: 25px 20px;
+    border-radius: 18px;
+  }
+
+}
+
+
+/* ================================
+   SMALL MOBILE
+================================ */
+
+@media (max-width: 480px) {
+
+  .post-job-header h1 {
+    font-size: 28px;
+  }
+
+  .post-job-header p {
+    font-size: 14px;
+  }
+
+  .post-job-form {
+    padding: 20px 15px;
+  }
+
+}

@@ -11,17 +11,25 @@ function Navbar() {
 
       {/* Navigation */}
       <div className="nav-links">
-        <Link to="/">Find Jobs</Link>
-        <Link to="/companies">Companies</Link>
-        <Link to="/about">About</Link>
-        <Link to="/profile">Profile</Link>
-        <Link to="/login">Login</Link>
+  <Link to="/#jobs">Find Jobs</Link>
 
-        {/* Highlighted Register */}
-        <Link to="/register" className="register-btn">
-          Register
-        </Link>
-      </div>
+  <Link to="/companies">Companies</Link>
+
+  <Link to="/about">About</Link>
+
+  <Link to="/profile">Profile</Link>
+
+  {/* Recruiter */}
+  <Link to="/post-job" className="post-job-link">
+    Post Job
+  </Link>
+
+  <Link to="/login">Login</Link>
+
+  <Link to="/register" className="register-btn">
+    Register
+  </Link>
+</div>
     </nav>
   );
 }

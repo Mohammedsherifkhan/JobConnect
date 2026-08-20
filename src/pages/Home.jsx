@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-
+import { useEffect, useMemo, useState } from "react";
 import JobCard from "../components/JobCard";
 import JobFilters from "../components/JobFilters";
+
 import "../Jobs.css";
+
 const jobs = [
   {
     id: 1,
@@ -79,33 +79,78 @@ const jobs = [
 ];
 
 function Home() {
+  // ================================
+  // FILTER STATES
+  // ================================
 
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("");
   const [jobType, setJobType] = useState("");
   const [experience, setExperience] = useState("");
 
+  // ================================
+  // RECRUITER POSTED JOBS
+  // ================================
+
+  const [postedJobs, setPostedJobs] = useState([]);
+
+  // Load jobs from localStorage
+  useEffect(() => {
+    const savedJobs =
+      JSON.parse(
+        localStorage.getItem("jobconnect_jobs")
+      ) || [];
+
+    setPostedJobs(savedJobs);
+  }, []);
+
+  // ================================
+  // COMBINE ALL JOBS
+  // ================================
+
+  const allJobs = [
+    ...jobs,
+    ...postedJobs,
+  ];
+
+  // ================================
+  // FILTER JOBS
+  // ================================
+
   const filteredJobs = useMemo(() => {
+    return allJobs.filter((job) => {
+      const searchText =
+        search.trim().toLowerCase();
 
-    return jobs.filter((job) => {
-
-      const searchText = search.toLowerCase();
-
+      // Search
       const matchesSearch =
-        job.title.toLowerCase().includes(searchText) ||
-        job.company.toLowerCase().includes(searchText) ||
-        job.skills.some((skill) =>
-          skill.toLowerCase().includes(searchText)
+        !searchText ||
+        job.title
+          ?.toLowerCase()
+          .includes(searchText) ||
+        job.company
+          ?.toLowerCase()
+          .includes(searchText) ||
+        job.location
+          ?.toLowerCase()
+          .includes(searchText) ||
+        job.skills?.some((skill) =>
+          skill
+            .toLowerCase()
+            .includes(searchText)
         );
 
+      // Location
       const matchesLocation =
         !location ||
         job.location === location;
 
+      // Job type
       const matchesType =
         !jobType ||
         job.type === jobType;
 
+      // Experience
       const matchesExperience =
         !experience ||
         job.experience === experience;
@@ -117,14 +162,24 @@ function Home() {
         matchesExperience
       );
     });
+  }, [
+    allJobs,
+    search,
+    location,
+    jobType,
+    experience,
+  ]);
 
-  }, [search, location, jobType, experience]);
-
+  // ================================
+  // PAGE
+  // ================================
 
   return (
     <div className="home-page">
 
-      {/* HERO */}
+      {/* =================================
+          HERO SECTION
+      ================================= */}
 
       <section className="job-hero">
 
@@ -137,13 +192,16 @@ function Home() {
           <h1>
             Find a job that
             <br />
-            <span>moves you forward.</span>
+
+            <span>
+              moves you forward.
+            </span>
           </h1>
 
           <p>
-            Discover opportunities from top companies,
-            build your profile, and take the next step
-            in your career.
+            Discover opportunities from top
+            companies, build your profile, and
+            take the next step in your career.
           </p>
 
         </div>
@@ -151,13 +209,21 @@ function Home() {
       </section>
 
 
-      {/* JOB SECTION */}
+      {/* =================================
+          JOB SECTION
+      ================================= */}
 
-      <main id="jobs" className="jobs-section">
+      <main
+        id="jobs"
+        className="jobs-section"
+      >
+
+        {/* SECTION HEADER */}
 
         <div className="section-heading">
 
           <div>
+
             <span className="section-label">
               OPPORTUNITIES
             </span>
@@ -167,10 +233,14 @@ function Home() {
             </h2>
 
             <p>
-              Find your next opportunity from our
-              growing list of jobs.
+              Find your next opportunity from
+              our growing list of jobs.
             </p>
+
           </div>
+
+
+          {/* JOB COUNT */}
 
           <span className="job-count">
             {filteredJobs.length} Jobs Found
@@ -179,36 +249,53 @@ function Home() {
         </div>
 
 
+        {/* =================================
+            FILTERS
+        ================================= */}
+
         <JobFilters
           search={search}
           setSearch={setSearch}
+
           location={location}
           setLocation={setLocation}
+
           jobType={jobType}
           setJobType={setJobType}
+
           experience={experience}
           setExperience={setExperience}
         />
 
+
+        {/* =================================
+            JOB RESULTS
+        ================================= */}
 
         {filteredJobs.length > 0 ? (
 
           <div className="jobs-grid">
 
             {filteredJobs.map((job) => (
+
               <JobCard
                 key={job.id}
                 job={job}
               />
+
             ))}
 
           </div>
 
         ) : (
 
+          /* =================================
+             NO JOBS
+          ================================= */
+
           <div className="no-jobs">
 
-            <div>
+            <div className="no-jobs-icon">
               🔎
             </div>
 
@@ -217,7 +304,8 @@ function Home() {
             </h3>
 
             <p>
-              Try changing your search or filters.
+              Try changing your search or
+              filters.
             </p>
 
           </div>
@@ -227,15 +315,17 @@ function Home() {
       </main>
 
 
-      {/* FOOTER */}
+      {/* =================================
+          FOOTER
+      ================================= */}
 
       <footer className="footer">
 
         <div>
 
-          <Link to="/" className="logo">
+          <div className="logo">
             Job<span>Connect</span>
-          </Link>
+          </div>
 
           <p>
             Connecting talented people with
@@ -243,6 +333,7 @@ function Home() {
           </p>
 
         </div>
+
 
         <div className="footer-copy">
           © 2026 JobConnect. All rights reserved.
