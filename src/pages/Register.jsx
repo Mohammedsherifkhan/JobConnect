@@ -1,52 +1,94 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import "../Auth.css";
+
 function Register() {
   const navigate = useNavigate();
-
-  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    role: "jobseeker",
+    confirmPassword: "",
+    role: "candidate",
   });
 
   const [error, setError] = useState("");
 
-  const handleChange = (event) => {
+  const handleChange = (e) => {
     setFormData({
       ...formData,
-      [event.target.name]: event.target.value,
+      [e.target.name]: e.target.value,
     });
 
     setError("");
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    setError("");
 
     if (
       !formData.name ||
       !formData.email ||
-      !formData.password
+      !formData.password ||
+      !formData.confirmPassword
     ) {
-      setError("Please fill in all required fields.");
+      setError("Please fill all fields.");
       return;
     }
 
-    if (!formData.email.includes("@")) {
-      setError("Please enter a valid email address.");
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must contain at least 6 characters.");
+      setError(
+        "Password must contain at least 6 characters."
+      );
       return;
     }
 
-    alert("Registration UI working successfully!");
+    const existingUsers =
+      JSON.parse(
+        localStorage.getItem("jobconnect_users")
+      ) || [];
+
+    const userExists = existingUsers.some(
+      (user) =>
+        user.email.toLowerCase() ===
+        formData.email.toLowerCase()
+    );
+
+    if (userExists) {
+      setError(
+        "An account with this email already exists."
+      );
+      return;
+    }
+
+    const newUser = {
+      id: Date.now(),
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      role: formData.role,
+    };
+
+    const updatedUsers = [
+      ...existingUsers,
+      newUser,
+    ];
+
+    localStorage.setItem(
+      "jobconnect_users",
+      JSON.stringify(updatedUsers)
+    );
+
+    alert("Registration successful!");
 
     navigate("/login");
   };
@@ -54,224 +96,158 @@ function Register() {
   return (
     <div className="auth-page">
 
-      <div className="auth-background-circle circle-one"></div>
-      <div className="auth-background-circle circle-two"></div>
+      <div className="auth-card">
 
-      <div className="auth-card register-card">
-
-        <Link to="/" className="auth-logo">
+        <div className="auth-logo">
           Job<span>Connect</span>
-        </Link>
-
-        <div className="auth-heading">
-
-          <h1>Create your account</h1>
-
-          <p>
-            Start your journey toward your dream career.
-          </p>
-
         </div>
 
+        <h1>Create Account</h1>
+
+        <p className="auth-subtitle">
+          Join JobConnect and find your next opportunity
+        </p>
 
         {error && (
           <div className="auth-error">
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
+        <form
+          className="auth-form"
+          onSubmit={handleSubmit}
+        >
 
-        <form onSubmit={handleSubmit}>
+          {/* NAME */}
 
-          <div className="input-group">
+          <div className="form-group">
 
-            <label htmlFor="name">
+            <label>
               Full Name
             </label>
 
-            <div className="input-wrapper">
-
-              <span>👤</span>
-
-              <input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="Enter your full name"
-                value={formData.name}
-                onChange={handleChange}
-              />
-
-            </div>
+            <input
+              type="text"
+              name="name"
+              placeholder="Enter your full name"
+              value={formData.name}
+              onChange={handleChange}
+            />
 
           </div>
 
 
-          <div className="input-group">
+          {/* EMAIL */}
 
-            <label htmlFor="email">
+          <div className="form-group">
+
+            <label>
               Email Address
             </label>
 
-            <div className="input-wrapper">
-
-              <span>✉</span>
-
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                value={formData.email}
-                onChange={handleChange}
-              />
-
-            </div>
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleChange}
+            />
 
           </div>
 
 
-          <div className="input-group">
+          {/* ROLE */}
 
-            <label htmlFor="password">
+          <div className="form-group">
+
+            <label>
+              Account Type
+            </label>
+
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+            >
+
+              <option value="candidate">
+                Candidate - Looking for a job
+              </option>
+
+              <option value="recruiter">
+                Recruiter - Hiring candidates
+              </option>
+
+            </select>
+
+          </div>
+
+
+          {/* PASSWORD */}
+
+          <div className="form-group">
+
+            <label>
               Password
             </label>
 
-            <div className="input-wrapper">
-
-              <span>🔒</span>
-
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Create a password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() =>
-                  setShowPassword(!showPassword)
-                }
-              >
-                {showPassword ? "🙈" : "👁"}
-              </button>
-
-            </div>
+            <input
+              type="password"
+              name="password"
+              placeholder="Create a password"
+              value={formData.password}
+              onChange={handleChange}
+            />
 
           </div>
 
 
-          <div className="input-group">
+          {/* CONFIRM PASSWORD */}
+
+          <div className="form-group">
 
             <label>
-              I want to
+              Confirm Password
             </label>
 
-            <div className="role-selection">
-
-              <label
-                className={
-                  formData.role === "jobseeker"
-                    ? "role-card active"
-                    : "role-card"
-                }
-              >
-
-                <input
-                  type="radio"
-                  name="role"
-                  value="jobseeker"
-                  checked={formData.role === "jobseeker"}
-                  onChange={handleChange}
-                />
-
-                <span className="role-icon">
-                  💼
-                </span>
-
-                <span>
-                  <strong>Find a Job</strong>
-                  <small>I'm looking for opportunities</small>
-                </span>
-
-              </label>
-
-
-              <label
-                className={
-                  formData.role === "recruiter"
-                    ? "role-card active"
-                    : "role-card"
-                }
-              >
-
-                <input
-                  type="radio"
-                  name="role"
-                  value="recruiter"
-                  checked={formData.role === "recruiter"}
-                  onChange={handleChange}
-                />
-
-                <span className="role-icon">
-                  🏢
-                </span>
-
-                <span>
-                  <strong>Hire Talent</strong>
-                  <small>I'm looking for candidates</small>
-                </span>
-
-              </label>
-
-            </div>
+            <input
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm your password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+            />
 
           </div>
 
 
-          <label className="terms">
-
-            <input type="checkbox" required />
-
-            <span>
-              I agree to the{" "}
-              <a href="#">Terms of Service</a>{" "}
-              and{" "}
-              <a href="#">Privacy Policy</a>
-            </span>
-
-          </label>
-
+          {/* REGISTER */}
 
           <button
             type="submit"
-            className="auth-submit"
+            className="auth-btn"
           >
             Create Account
-            <span>→</span>
           </button>
 
         </form>
 
 
-        <p className="auth-switch">
+        {/* LOGIN */}
 
-          Already have an account?
+        <div className="auth-bottom">
 
-          <Link to="/login">
-            Sign in
+          Already have an account?{" "}
+
+          <Link
+            to="/login"
+            className="auth-link"
+          >
+            Login
           </Link>
 
-        </p>
-
-
-        <Link to="/" className="back-home">
-          ← Back to JobConnect
-        </Link>
+        </div>
 
       </div>
 

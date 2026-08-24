@@ -1,7 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import "./PostJob.css";
 
 function PostJob() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     title: "",
     company: "",
@@ -23,88 +27,143 @@ function PostJob() {
   };
 
   const handleSubmit = (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (
-    !formData.title ||
-    !formData.company ||
-    !formData.location ||
-    !formData.type ||
-    !formData.experience ||
-    !formData.salary ||
-    !formData.skills ||
-    !formData.description
-  ) {
-    alert("Please fill all fields.");
-    return;
-  }
+    // Check logged-in recruiter
+    const savedUser = localStorage.getItem(
+      "jobconnect_current_user"
+    );
 
-  const newJob = {
-    id: Date.now(),
-    title: formData.title,
-    company: formData.company,
-    location: formData.location,
-    type: formData.type,
-    experience: formData.experience,
-    salary: formData.salary,
-    posted: "Just now",
-    skills: formData.skills
-      .split(",")
-      .map((skill) => skill.trim()),
-    description: formData.description,
-  };
+    if (!savedUser) {
+      alert("Please login first.");
+      navigate("/login");
+      return;
+    }
 
+    const currentUser = JSON.parse(savedUser);
 
-    // console.log("New Job:", newJob);
+    // Check recruiter role
+    if (currentUser.role !== "recruiter") {
+      alert("Only recruiters can post jobs.");
+      navigate("/");
+      return;
+    }
 
-    // alert("Job posted successfully!");
+    // Validate form
+    if (
+      !formData.title ||
+      !formData.company ||
+      !formData.location ||
+      !formData.type ||
+      !formData.experience ||
+      !formData.salary ||
+      !formData.skills ||
+      !formData.description
+    ) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    // Create new job
+    const newJob = {
+      id: Date.now(),
+
+      title: formData.title,
+
+      company: formData.company,
+
+      location: formData.location,
+
+      type: formData.type,
+
+      experience: formData.experience,
+
+      salary: formData.salary,
+
+      posted: "Just now",
+
+      skills: formData.skills
+        .split(",")
+        .map((skill) => skill.trim())
+        .filter((skill) => skill !== ""),
+
+      description: formData.description,
+
+      // Recruiter information
+      recruiterId: currentUser.id,
+
+      recruiterName: currentUser.name,
+
+      recruiterEmail: currentUser.email,
+    };
+
+    // Get existing jobs
     const existingJobs =
-  JSON.parse(localStorage.getItem("jobconnect_jobs")) || [];
+      JSON.parse(
+        localStorage.getItem("jobconnect_jobs")
+      ) || [];
 
-const updatedJobs = [...existingJobs, newJob];
+    // Add new job
+    const updatedJobs = [
+      ...existingJobs,
+      newJob,
+    ];
 
-localStorage.setItem(
-  "jobconnect_jobs",
-  JSON.stringify(updatedJobs)
-);
+    // Save jobs
+    localStorage.setItem(
+      "jobconnect_jobs",
+      JSON.stringify(updatedJobs)
+    );
 
-alert("Job posted successfully!");
+    // Notify other components
+    window.dispatchEvent(
+      new Event("jobPosted")
+    );
 
-    setFormData({
-      title: "",
-      company: "",
-      location: "",
-      type: "",
-      experience: "",
-      salary: "",
-      skills: "",
-      description: "",
-    });
+    alert("Job posted successfully!");
+
+    // Go to recruiter dashboard
+    navigate("/recruiter-dashboard");
   };
 
   return (
     <div className="post-job-page">
+
       <div className="post-job-container">
 
-        <div className="post-job-header">
-          <span>RECRUITER</span>
+        {/* HEADER */}
 
-          <h1>Post a New Job</h1>
+        <div className="post-job-header">
+
+          <span>
+            RECRUITER
+          </span>
+
+          <h1>
+            Post a New Job
+          </h1>
 
           <p>
             Find the right candidate for your company.
           </p>
+
         </div>
+
+
+        {/* FORM */}
 
         <form
           className="post-job-form"
           onSubmit={handleSubmit}
         >
 
-          {/* Job Title */}
+          {/* JOB TITLE */}
 
           <div className="form-group">
-            <label>Job Title</label>
+
+            <label>
+              Job Title
+            </label>
 
             <input
               type="text"
@@ -113,12 +172,17 @@ alert("Job posted successfully!");
               value={formData.title}
               onChange={handleChange}
             />
+
           </div>
 
-          {/* Company */}
+
+          {/* COMPANY */}
 
           <div className="form-group">
-            <label>Company Name</label>
+
+            <label>
+              Company Name
+            </label>
 
             <input
               type="text"
@@ -127,12 +191,17 @@ alert("Job posted successfully!");
               value={formData.company}
               onChange={handleChange}
             />
+
           </div>
 
-          {/* Location */}
+
+          {/* LOCATION */}
 
           <div className="form-group">
-            <label>Location</label>
+
+            <label>
+              Location
+            </label>
 
             <input
               type="text"
@@ -141,18 +210,24 @@ alert("Job posted successfully!");
               value={formData.location}
               onChange={handleChange}
             />
+
           </div>
 
-          {/* Job Type */}
+
+          {/* JOB TYPE */}
 
           <div className="form-group">
-            <label>Job Type</label>
+
+            <label>
+              Job Type
+            </label>
 
             <select
               name="type"
               value={formData.type}
               onChange={handleChange}
             >
+
               <option value="">
                 Select job type
               </option>
@@ -172,19 +247,26 @@ alert("Job posted successfully!");
               <option value="Remote">
                 Remote
               </option>
+
             </select>
+
           </div>
 
-          {/* Experience */}
+
+          {/* EXPERIENCE */}
 
           <div className="form-group">
-            <label>Experience</label>
+
+            <label>
+              Experience
+            </label>
 
             <select
               name="experience"
               value={formData.experience}
               onChange={handleChange}
             >
+
               <option value="">
                 Select experience
               </option>
@@ -204,13 +286,19 @@ alert("Job posted successfully!");
               <option value="5+ Years">
                 5+ Years
               </option>
+
             </select>
+
           </div>
 
-          {/* Salary */}
+
+          {/* SALARY */}
 
           <div className="form-group">
-            <label>Salary</label>
+
+            <label>
+              Salary
+            </label>
 
             <input
               type="text"
@@ -219,12 +307,17 @@ alert("Job posted successfully!");
               value={formData.salary}
               onChange={handleChange}
             />
+
           </div>
 
-          {/* Skills */}
+
+          {/* SKILLS */}
 
           <div className="form-group">
-            <label>Skills</label>
+
+            <label>
+              Skills
+            </label>
 
             <input
               type="text"
@@ -237,12 +330,17 @@ alert("Job posted successfully!");
             <small>
               Separate skills using commas.
             </small>
+
           </div>
 
-          {/* Description */}
+
+          {/* DESCRIPTION */}
 
           <div className="form-group">
-            <label>Job Description</label>
+
+            <label>
+              Job Description
+            </label>
 
             <textarea
               name="description"
@@ -251,9 +349,11 @@ alert("Job posted successfully!");
               value={formData.description}
               onChange={handleChange}
             />
+
           </div>
 
-          {/* Submit */}
+
+          {/* SUBMIT */}
 
           <button
             type="submit"
@@ -263,7 +363,9 @@ alert("Job posted successfully!");
           </button>
 
         </form>
+
       </div>
+
     </div>
   );
 }

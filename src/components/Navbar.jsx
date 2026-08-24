@@ -1,35 +1,178 @@
-import { Link } from "react-router-dom";
-import "./Navbar.css";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 function Navbar() {
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const loadUser = () => {
+    const savedUser = localStorage.getItem(
+      "jobconnect_current_user"
+    );
+
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+    } else {
+      setCurrentUser(null);
+    }
+  };
+
+  useEffect(() => {
+    loadUser();
+
+    window.addEventListener("userLogin", loadUser);
+    window.addEventListener("userLogout", loadUser);
+
+    return () => {
+      window.removeEventListener("userLogin", loadUser);
+      window.removeEventListener("userLogout", loadUser);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem(
+      "jobconnect_current_user"
+    );
+
+    setCurrentUser(null);
+
+    window.dispatchEvent(
+      new Event("userLogout")
+    );
+
+    navigate("/");
+  };
+
   return (
     <nav className="navbar">
-      {/* Logo */}
+
+      {/* ================= LOGO ================= */}
+
       <Link to="/" className="logo">
         Job<span>Connect</span>
       </Link>
 
-      {/* Navigation */}
+
+      {/* ================= NAV LINKS ================= */}
+
       <div className="nav-links">
-  <Link to="/#jobs">Find Jobs</Link>
 
-  <Link to="/companies">Companies</Link>
+        {/* HOME */}
 
-  <Link to="/about">About</Link>
+        <Link to="/">
+          Home
+        </Link>
 
-  <Link to="/profile">Profile</Link>
 
-  {/* Recruiter */}
-  <Link to="/post-job" className="post-job-link">
-    Post Job
-  </Link>
+        {/* FIND JOBS */}
 
-  <Link to="/login">Login</Link>
+        <a href="/#jobs">
+          Find Jobs
+        </a>
 
-  <Link to="/register" className="register-btn">
-    Register
-  </Link>
-</div>
+
+        {/* ================= RECRUITER ================= */}
+
+        {currentUser?.role === "recruiter" && (
+          <>
+            <Link to="/recruiter-dashboard">
+              Dashboard
+            </Link>
+
+            <Link to="/post-job">
+              Post Job
+            </Link>
+          </>
+        )}
+
+
+        {/* ================= CANDIDATE ================= */}
+
+        {currentUser?.role === "candidate" && (
+          <Link to="/applications">
+            Applications
+          </Link>
+        )}
+
+
+        {/* ================= PROFILE ================= */}
+
+        {currentUser && (
+          <Link to="/profile">
+            Profile
+          </Link>
+        )}
+
+      </div>
+
+
+      {/* ================= RIGHT SIDE ================= */}
+
+      <div className="nav-actions">
+
+        {currentUser ? (
+
+          <>
+
+            {/* USER NAME */}
+
+            <span className="profile-nav-link">
+              👤 {currentUser.name}
+            </span>
+
+
+            {/* ROLE */}
+
+            <span className="role-badge">
+
+              {currentUser.role === "recruiter"
+                ? "Recruiter"
+                : "Candidate"}
+
+            </span>
+
+
+            {/* LOGOUT */}
+
+            <button
+              type="button"
+              className="logout-btn"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+
+          </>
+
+        ) : (
+
+          <>
+
+            {/* LOGIN */}
+
+            <Link
+              to="/login"
+              className="login-link"
+            >
+              Login
+            </Link>
+
+
+            {/* REGISTER */}
+
+            <Link
+              to="/register"
+              className="nav-register"
+            >
+              Register
+            </Link>
+
+          </>
+
+        )}
+
+      </div>
+
     </nav>
   );
 }

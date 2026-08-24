@@ -1,52 +1,87 @@
-.navbar {
-  width: 100%;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 6%;
-  background: #07111f;
-  box-sizing: border-box;
-}
+/* =========================
+   PROFILE NAV LINK
+========================= */
 
-.logo {
+.profile-nav-link {
+  color: #ffffff;
   text-decoration: none;
-  font-size: 26px;
-  font-weight: 800;
-  color: white;
+  font-weight: 600;
+  transition: 0.2s ease;
 }
 
-.logo span {
-  color: #38bdf8;
+.profile-nav-link:hover {
+  color: #68e7ff;
 }
 
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 35px;
-}
 
-.nav-links a {
-  color: #e5e7eb;
-  text-decoration: none;
-  font-size: 16px;
-  font-weight: 500;
-}
+/* =========================
+   LOGOUT
+========================= */
 
-.nav-links a:hover {
-  color: #38bdf8;
-}
-
-/* Register highlight */
-.nav-links .register-btn {
-  background: #38bdf8;
-  color: #06111f;
-  padding: 13px 24px;
+.logout-btn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
+
+  padding: 10px 16px;
+
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 80, 80, 0.12);
+  border-color: rgba(255, 100, 100, 0.3);
+  color: #ff9b9b;
+}
+
+
+/* =========================
+   NAV ACTIONS
+========================= */
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.profile-nav-link {
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.profile-nav-link:hover {
+  color: #68e7ff;
+}
+
+.role-badge {
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: rgba(104, 231, 255, 0.1);
+  border: 1px solid rgba(104, 231, 255, 0.2);
+  color: #68e7ff;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.nav-links .register-btn:hover {
-  background: #7dd3fc;
-  color: #06111f;
+.logout-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 80, 80, 0.12);
+  color: #ff9b9b;
 }

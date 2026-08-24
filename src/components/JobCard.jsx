@@ -1,75 +1,103 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function JobCard({ job }) {
-  const [saved, setSaved] = useState(false);
+  const navigate = useNavigate();
+
+  const handleApply = () => {
+    navigate(`/apply/${job.id}`);
+  };
 
   return (
     <article className="job-card">
 
+      {/* TOP */}
+
       <div className="job-card-top">
 
         <div className="company-logo">
-          {job.company.charAt(0)}
+          {job.company
+            ? job.company.charAt(0).toUpperCase()
+            : "J"}
         </div>
 
         <button
-          className={`save-job ${saved ? "saved" : ""}`}
-          onClick={() => setSaved(!saved)}
-          aria-label="Save job"
+          className="favorite-btn"
+          type="button"
         >
-          {saved ? "♥" : "♡"}
+          ♡
         </button>
 
       </div>
 
-      <div className="job-content">
 
-        <span className="job-badge">
-          {job.type}
+      {/* JOB TYPE */}
+
+      <div className="job-type">
+        {job.type}
+      </div>
+
+
+      {/* TITLE */}
+
+      <h3>
+        {job.title}
+      </h3>
+
+
+      {/* COMPANY */}
+
+      <p className="company-name">
+        {job.company}
+      </p>
+
+
+      {/* JOB DETAILS */}
+
+      <div className="job-details">
+
+        <span>
+          📍 {job.location}
         </span>
 
-        <h3>{job.title}</h3>
+        <span>
+          💼 {job.experience}
+        </span>
 
-        <p className="company-name">
-          {job.company}
-        </p>
-
-        <div className="job-meta">
-
-          <span>
-            📍 {job.location}
-          </span>
-
-          <span>
-            💼 {job.experience}
-          </span>
-
-        </div>
-
-        <div className="job-salary">
+        <span>
           💰 {job.salary}
-        </div>
+        </span>
 
-        <div className="job-skills">
+      </div>
 
-          {job.skills.map((skill) => (
-            <span key={skill}>
+
+      {/* SKILLS */}
+
+      <div className="job-skills">
+
+        {job.skills &&
+          job.skills.map((skill, index) => (
+            <span key={index}>
               {skill}
             </span>
           ))}
 
-        </div>
-
       </div>
 
-      <div className="job-card-footer">
 
-        <small>
+      {/* BOTTOM */}
+
+      <div className="job-card-bottom">
+
+        <span className="posted">
           Posted {job.posted}
-        </small>
+        </span>
 
-        <button className="apply-btn">
-          Apply Now →
+        <button
+          className="apply-btn"
+          onClick={handleApply}
+          type="button"
+        >
+          Apply Now
         </button>
 
       </div>

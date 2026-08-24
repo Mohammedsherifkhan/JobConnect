@@ -456,3 +456,53 @@
     padding: 20px;
   }
 }
+.resume-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  min-height: 220px;
+  padding: 30px 20px;
+
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+
+  cursor: pointer;
+  text-align: center;
+
+  transition: all 0.25s ease;
+}
+
+.resume-upload:hover {
+  border-color: #2563eb;
+  background: #f8fbff;
+  transform: translateY(-2px);
+}
+
+.upload-icon {
+  font-size: 42px;
+}
+
+.resume-upload strong {
+  font-size: 18px;
+}
+
+.resume-upload span {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.resume-select-text {
+  margin-top: 8px;
+  padding: 10px 20px;
+
+  border-radius: 8px;
+
+  background: #2563eb;
+  color: white;
+
+  font-size: 14px;
+  font-weight: 600;
+}

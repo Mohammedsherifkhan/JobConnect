@@ -1,114 +1,141 @@
-import { Link } from "react-router-dom";
-import "../Recruiter.css";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const jobs = [
-  {
-    id: 1,
-    title: "Frontend Developer",
-    department: "Engineering",
-    location: "Chennai",
-    type: "Full Time",
-    applicants: 42,
-    status: "Active",
-    posted: "2 days ago",
-  },
-  {
-    id: 2,
-    title: "Java Developer",
-    department: "Engineering",
-    location: "Bangalore",
-    type: "Full Time",
-    applicants: 31,
-    status: "Active",
-    posted: "4 days ago",
-  },
-  {
-    id: 3,
-    title: "UI/UX Designer",
-    department: "Design",
-    location: "Remote",
-    type: "Remote",
-    applicants: 18,
-    status: "Closed",
-    posted: "1 week ago",
-  },
-  {
-    id: 4,
-    title: "Backend Developer",
-    department: "Engineering",
-    location: "Hyderabad",
-    type: "Full Time",
-    applicants: 27,
-    status: "Active",
-    posted: "1 week ago",
-  },
-];
+import "../Dashboard.css";
 
 function RecruiterDashboard() {
+  const navigate = useNavigate();
+
+  const [user, setUser] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [applications, setApplications] = useState([]);
+
+  const loadDashboard = () => {
+    const savedUser = localStorage.getItem(
+      "jobconnect_current_user"
+    );
+
+    if (!savedUser) {
+      navigate("/login");
+      return;
+    }
+
+    const currentUser = JSON.parse(savedUser);
+
+    if (currentUser.role !== "recruiter") {
+      navigate("/");
+      return;
+    }
+
+    setUser(currentUser);
+
+    // Get recruiter jobs
+    const savedJobs =
+      JSON.parse(
+        localStorage.getItem("jobconnect_jobs")
+      ) || [];
+
+    const recruiterJobs = savedJobs.filter(
+      (job) =>
+        String(job.recruiterId) ===
+        String(currentUser.id)
+    );
+
+    setJobs(recruiterJobs);
+
+    // Get all applications
+    const savedApplications =
+      JSON.parse(
+        localStorage.getItem(
+          "jobconnect_applications"
+        )
+      ) || [];
+
+    // Applications for recruiter's jobs
+    const recruiterApplications =
+      savedApplications.filter((application) =>
+        recruiterJobs.some(
+          (job) =>
+            String(job.id) ===
+            String(application.jobId)
+        )
+      );
+
+    setApplications(recruiterApplications);
+  };
+
+  useEffect(() => {
+    loadDashboard();
+
+    window.addEventListener(
+      "jobPosted",
+      loadDashboard
+    );
+
+    window.addEventListener(
+      "applicationsUpdated",
+      loadDashboard
+    );
+
+    return () => {
+      window.removeEventListener(
+        "jobPosted",
+        loadDashboard
+      );
+
+      window.removeEventListener(
+        "applicationsUpdated",
+        loadDashboard
+      );
+    };
+  }, []);
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="recruiter-page">
+    <div className="dashboard-page">
 
-      <main className="recruiter-container">
+      <div className="dashboard-container">
 
-        {/* HEADER */}
+        {/* ================= HEADER ================= */}
 
-        <div className="recruiter-header">
+        <div className="dashboard-header">
 
           <div>
+
             <span className="dashboard-label">
-              RECRUITER PORTAL
+              RECRUITER DASHBOARD
             </span>
 
-            <h1>Good morning, Recruiter 👋</h1>
+            <h1>
+              Welcome, {user.name} 👋
+            </h1>
 
             <p>
-              Manage your jobs, applicants and hiring activity
-              from one place.
+              Manage your jobs and applications.
             </p>
+
           </div>
 
-          <Link
-            to="/recruiter/post-job"
-            className="post-job-btn"
+          <button
+            className="dashboard-post-btn"
+            onClick={() =>
+              navigate("/post-job")
+            }
           >
             + Post New Job
-          </Link>
+          </button>
 
         </div>
 
 
-        {/* COMPANY CARD */}
+        {/* ================= STATISTICS ================= */}
 
-        <section className="company-card">
+        <div className="dashboard-stats">
 
-          <div className="company-avatar">
-            TN
-          </div>
-
-          <div className="company-details">
-
-            <h2>TechNova Solutions</h2>
-
-            <p>
-              Technology • Software Development
-            </p>
-
-            <span>
-              📍 Chennai, Tamil Nadu
-            </span>
-
-          </div>
-
-          <button className="company-edit-btn">
-            Edit Company
-          </button>
-
-        </section>
-
-
-        {/* STATISTICS */}
-
-        <section className="recruiter-stats">
+          {/* TOTAL JOBS */}
 
           <div className="stat-card">
 
@@ -117,350 +144,206 @@ function RecruiterDashboard() {
             </div>
 
             <div>
-              <span>Total Jobs</span>
-              <strong>8</strong>
+
+              <span>
+                Total Jobs
+              </span>
+
+              <strong>
+                {jobs.length}
+              </strong>
+
             </div>
 
           </div>
 
+
+          {/* APPLICATIONS */}
 
           <div className="stat-card">
 
             <div className="stat-icon">
-              🟢
+              📄
             </div>
 
             <div>
-              <span>Active Jobs</span>
-              <strong>6</strong>
+
+              <span>
+                Applications
+              </span>
+
+              <strong>
+                {applications.length}
+              </strong>
+
             </div>
 
           </div>
 
+
+          {/* ACTIVE JOBS */}
 
           <div className="stat-card">
 
             <div className="stat-icon">
-              👥
+              ✓
             </div>
 
             <div>
-              <span>Total Applicants</span>
-              <strong>124</strong>
+
+              <span>
+                Active Jobs
+              </span>
+
+              <strong>
+                {jobs.length}
+              </strong>
+
             </div>
 
           </div>
 
-
-          <div className="stat-card">
-
-            <div className="stat-icon">
-              🎯
-            </div>
-
-            <div>
-              <span>Hired</span>
-              <strong>12</strong>
-            </div>
-
-          </div>
-
-        </section>
+        </div>
 
 
-        {/* QUICK ACTIONS */}
+        {/* ================= POSTED JOBS ================= */}
 
-        <section className="quick-actions">
+        <div className="dashboard-section">
 
           <div className="section-title">
 
-            <div>
-              <span>QUICK ACTIONS</span>
-              <h2>Manage your hiring</h2>
-            </div>
+            <h2>
+              My Posted Jobs
+            </h2>
+
+            <p>
+              Jobs posted by your account
+            </p>
 
           </div>
 
 
-          <div className="action-grid">
+          {jobs.length === 0 ? (
 
-            <Link
-              to="/recruiter/post-job"
-              className="action-card"
-            >
-              <div className="action-icon">
-                +
-              </div>
+            <div className="empty-dashboard">
 
-              <div>
-                <h3>Post a Job</h3>
-                <p>
-                  Create a new job opening.
-                </p>
-              </div>
-
-              <span>→</span>
-            </Link>
-
-
-            <Link
-              to="#jobs"
-              className="action-card"
-            >
-              <div className="action-icon">
+              <div className="empty-icon">
                 💼
               </div>
 
-              <div>
-                <h3>Manage Jobs</h3>
-                <p>
-                  View and manage your postings.
-                </p>
-              </div>
+              <h3>
+                No jobs posted yet
+              </h3>
 
-              <span>→</span>
-            </Link>
+              <p>
+                Create your first job posting
+                to start receiving applications.
+              </p>
 
+              <button
+                onClick={() =>
+                  navigate("/post-job")
+                }
+              >
+                Post a Job
+              </button>
 
-            <Link
-              to="#applicants"
-              className="action-card"
-            >
-              <div className="action-icon">
-                👥
-              </div>
-
-              <div>
-                <h3>View Applicants</h3>
-                <p>
-                  Review candidate applications.
-                </p>
-              </div>
-
-              <span>→</span>
-            </Link>
-
-          </div>
-
-        </section>
-
-
-        {/* JOBS */}
-
-        <section
-          id="jobs"
-          className="jobs-management"
-        >
-
-          <div className="section-title jobs-title">
-
-            <div>
-              <span>JOB POSTINGS</span>
-              <h2>Your Recent Jobs</h2>
             </div>
 
-            <button className="view-all-btn">
-              View All Jobs
-            </button>
+          ) : (
 
-          </div>
+            <div className="recruiter-jobs">
 
+              {jobs.map((job) => {
 
-          <div className="jobs-table-wrapper">
+                // Count applications for this job
 
-            <table className="jobs-table">
+                const jobApplications =
+                  applications.filter(
+                    (application) =>
+                      String(
+                        application.jobId
+                      ) === String(job.id)
+                  );
 
-              <thead>
+                return (
 
-                <tr>
-                  <th>Job</th>
-                  <th>Location</th>
-                  <th>Type</th>
-                  <th>Applicants</th>
-                  <th>Status</th>
-                  <th>Posted</th>
-                  <th></th>
-                </tr>
+                  <div
+                    className="recruiter-job-card"
+                    key={job.id}
+                  >
 
-              </thead>
+                    {/* JOB INFORMATION */}
 
-              <tbody>
+                    <div className="recruiter-job-info">
 
-                {jobs.map((job) => (
+                      <span className="job-type-badge">
+                        {job.type}
+                      </span>
 
-                  <tr key={job.id}>
+                      <h3>
+                        {job.title}
+                      </h3>
 
-                    <td>
+                      <p>
+                        {job.company}
+                      </p>
 
-                      <div className="job-table-info">
+                      <div className="job-meta">
 
-                        <div className="job-table-icon">
-                          {job.title.charAt(0)}
-                        </div>
+                        <span>
+                          📍 {job.location}
+                        </span>
 
-                        <div>
-                          <strong>{job.title}</strong>
+                        <span>
+                          💼 {job.experience}
+                        </span>
 
-                          <small>
-                            {job.department}
-                          </small>
-                        </div>
+                        <span>
+                          💰 {job.salary}
+                        </span>
 
                       </div>
 
-                    </td>
+                    </div>
 
-                    <td>
-                      {job.location}
-                    </td>
 
-                    <td>
-                      {job.type}
-                    </td>
+                    {/* APPLICATION INFORMATION */}
 
-                    <td>
+                    <div className="job-application-info">
+
                       <strong>
-                        {job.applicants}
+                        {jobApplications.length}
                       </strong>
-                    </td>
 
-                    <td>
-
-                      <span
-                        className={
-                          job.status === "Active"
-                            ? "status active"
-                            : "status closed"
-                        }
-                      >
-                        {job.status}
+                      <span>
+                        Applications
                       </span>
 
-                    </td>
-
-                    <td>
-                      {job.posted}
-                    </td>
-
-                    <td>
-
-                      <button className="more-btn">
-                        ⋮
+                      <button
+                        onClick={() =>
+                          navigate(
+                            `/applications/${job.id}`
+                          )
+                        }
+                      >
+                        View Applications
                       </button>
 
-                    </td>
+                    </div>
 
-                  </tr>
+                  </div>
 
-                ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </section>
-
-
-        {/* RECENT ACTIVITY */}
-
-        <section
-          id="applicants"
-          className="activity-section"
-        >
-
-          <div className="section-title">
-
-            <div>
-              <span>RECENT ACTIVITY</span>
-              <h2>Latest applications</h2>
-            </div>
-
-          </div>
-
-
-          <div className="activity-list">
-
-            <div className="activity-item">
-
-              <div className="activity-avatar">
-                AK
-              </div>
-
-              <div className="activity-content">
-
-                <strong>
-                  Arjun Kumar
-                </strong>
-
-                <p>
-                  Applied for Frontend Developer
-                </p>
-
-              </div>
-
-              <small>
-                12 min ago
-              </small>
+                );
+              })}
 
             </div>
 
+          )}
 
-            <div className="activity-item">
+        </div>
 
-              <div className="activity-avatar">
-                PS
-              </div>
-
-              <div className="activity-content">
-
-                <strong>
-                  Priya Sharma
-                </strong>
-
-                <p>
-                  Applied for Java Developer
-                </p>
-
-              </div>
-
-              <small>
-                1 hour ago
-              </small>
-
-            </div>
-
-
-            <div className="activity-item">
-
-              <div className="activity-avatar">
-                RM
-              </div>
-
-              <div className="activity-content">
-
-                <strong>
-                  Rahul M
-                </strong>
-
-                <p>
-                  Application shortlisted
-                </p>
-
-              </div>
-
-              <small>
-                3 hours ago
-              </small>
-
-            </div>
-
-          </div>
-
-        </section>
-
-      </main>
+      </div>
 
     </div>
   );

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import "../Auth.css";
+
 function Login() {
   const navigate = useNavigate();
-
-  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -13,176 +13,175 @@ function Login() {
 
   const [error, setError] = useState("");
 
-  const handleChange = (event) => {
+  const handleChange = (e) => {
     setFormData({
       ...formData,
-      [event.target.name]: event.target.value,
+      [e.target.name]: e.target.value,
     });
 
     setError("");
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
+    setError("");
+
+    // Validation
     if (!formData.email || !formData.password) {
-      setError("Please fill in all fields.");
+      setError("Please enter email and password.");
       return;
     }
 
-    if (!formData.email.includes("@")) {
-      setError("Please enter a valid email address.");
+    // Get registered users
+    const users =
+      JSON.parse(
+        localStorage.getItem("jobconnect_users")
+      ) || [];
+
+    // Find matching user
+    const user = users.find(
+      (item) =>
+        item.email.toLowerCase() ===
+          formData.email.toLowerCase() &&
+        item.password === formData.password
+    );
+
+    // Wrong credentials
+    if (!user) {
+      setError("Invalid email or password.");
       return;
     }
 
-    alert("Login UI working successfully!");
+    // Save logged-in user
+    localStorage.setItem(
+      "jobconnect_current_user",
+      JSON.stringify(user)
+    );
 
+    // Tell Navbar that login happened
+    window.dispatchEvent(
+      new Event("userLogin")
+    );
+
+    // Go to Home
     navigate("/");
   };
 
   return (
     <div className="auth-page">
 
-      <div className="auth-background-circle circle-one"></div>
-      <div className="auth-background-circle circle-two"></div>
-
       <div className="auth-card">
 
-        <Link to="/" className="auth-logo">
+        {/* LOGO */}
+
+        <div className="auth-logo">
           Job<span>Connect</span>
-        </Link>
-
-        <div className="auth-heading">
-          <h1>Welcome back 👋</h1>
-
-          <p>
-            Sign in to continue your career journey.
-          </p>
         </div>
+
+        {/* TITLE */}
+
+        <h1>
+          Welcome Back
+        </h1>
+
+        <p className="auth-subtitle">
+          Login to continue to JobConnect
+        </p>
+
+        {/* ERROR */}
 
         {error && (
           <div className="auth-error">
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        {/* FORM */}
 
-          <div className="input-group">
+        <form
+          className="auth-form"
+          onSubmit={handleSubmit}
+        >
 
-            <label htmlFor="email">
+          {/* EMAIL */}
+
+          <div className="form-group">
+
+            <label>
               Email Address
             </label>
 
-            <div className="input-wrapper">
-              <span>✉</span>
-
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleChange}
+            />
 
           </div>
 
 
-          <div className="input-group">
+          {/* PASSWORD */}
 
-            <label htmlFor="password">
+          <div className="form-group">
+
+            <label>
               Password
             </label>
 
-            <div className="input-wrapper">
-
-              <span>🔒</span>
-
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() =>
-                  setShowPassword(!showPassword)
-                }
-              >
-                {showPassword ? "🙈" : "👁"}
-              </button>
-
-            </div>
+            <input
+              type="password"
+              name="password"
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={handleChange}
+            />
 
           </div>
 
 
-          <div className="auth-options">
+          {/* FORGOT PASSWORD */}
 
-            <label className="remember">
-              <input type="checkbox" />
-              <span>Remember me</span>
-            </label>
+          <div className="forgot-link">
 
-            <Link to="/forgot-password">
-              Forgot password?
+            <Link
+              to="/forgot-password"
+              className="auth-link"
+            >
+              Forgot Password?
             </Link>
 
           </div>
 
 
+          {/* LOGIN BUTTON */}
+
           <button
             type="submit"
-            className="auth-submit"
+            className="auth-btn"
           >
-            Sign In
-            <span>→</span>
+            Login
           </button>
 
         </form>
 
 
-        <div className="auth-divider">
-          <span>OR</span>
-        </div>
+        {/* REGISTER */}
 
+        <div className="auth-bottom">
 
-        <div className="social-login">
+          Don't have an account?{" "}
 
-          <button type="button">
-            <span>G</span>
-            Continue with Google
-          </button>
-
-          <button type="button">
-            <span>in</span>
-            Continue with LinkedIn
-          </button>
-
-        </div>
-
-
-        <p className="auth-switch">
-
-          Don't have an account?
-
-          <Link to="/register">
-            Create one
+          <Link
+            to="/register"
+            className="auth-link"
+          >
+            Create Account
           </Link>
 
-        </p>
-
-
-        <Link to="/" className="back-home">
-          ← Back to JobConnect
-        </Link>
+        </div>
 
       </div>
 
