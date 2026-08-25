@@ -3,7 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 
 function Navbar() {
   const navigate = useNavigate();
+
   const [currentUser, setCurrentUser] = useState(null);
+
+  /* =========================================
+     LOAD CURRENT USER
+  ========================================= */
 
   const loadUser = () => {
     const savedUser = localStorage.getItem(
@@ -11,23 +16,55 @@ function Navbar() {
     );
 
     if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
+      try {
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+      } catch (error) {
+        console.error(
+          "Failed to load current user:",
+          error
+        );
+
+        setCurrentUser(null);
+      }
     } else {
       setCurrentUser(null);
     }
   };
 
+  /* =========================================
+     EFFECT
+  ========================================= */
+
   useEffect(() => {
     loadUser();
 
-    window.addEventListener("userLogin", loadUser);
-    window.addEventListener("userLogout", loadUser);
+    window.addEventListener(
+      "userLogin",
+      loadUser
+    );
+
+    window.addEventListener(
+      "userLogout",
+      loadUser
+    );
 
     return () => {
-      window.removeEventListener("userLogin", loadUser);
-      window.removeEventListener("userLogout", loadUser);
+      window.removeEventListener(
+        "userLogin",
+        loadUser
+      );
+
+      window.removeEventListener(
+        "userLogout",
+        loadUser
+      );
     };
   }, []);
+
+  /* =========================================
+     LOGOUT
+  ========================================= */
 
   const handleLogout = () => {
     localStorage.removeItem(
@@ -43,17 +80,44 @@ function Navbar() {
     navigate("/");
   };
 
+  /* =========================================
+     ROLE NAME
+  ========================================= */
+
+  const getRoleName = () => {
+    if (!currentUser) {
+      return "";
+    }
+
+    if (currentUser.role === "admin") {
+      return "Admin";
+    }
+
+    if (currentUser.role === "recruiter") {
+      return "Recruiter";
+    }
+
+    return "Candidate";
+  };
+
   return (
     <nav className="navbar">
 
-      {/* ================= LOGO ================= */}
+      {/* =====================================
+          LOGO
+      ===================================== */}
 
-      <Link to="/" className="logo">
+      <Link
+        to="/"
+        className="logo"
+      >
         Job<span>Connect</span>
       </Link>
 
 
-      {/* ================= NAV LINKS ================= */}
+      {/* =====================================
+          NAVIGATION LINKS
+      ===================================== */}
 
       <div className="nav-links">
 
@@ -71,7 +135,20 @@ function Navbar() {
         </a>
 
 
-        {/* ================= RECRUITER ================= */}
+        {/* =================================
+            ADMIN LOGGED IN
+        ================================= */}
+
+        {currentUser?.role === "admin" && (
+          <Link to="/admin-dashboard">
+            Admin Dashboard
+          </Link>
+        )}
+
+
+        {/* =================================
+            RECRUITER
+        ================================= */}
 
         {currentUser?.role === "recruiter" && (
           <>
@@ -86,7 +163,9 @@ function Navbar() {
         )}
 
 
-        {/* ================= CANDIDATE ================= */}
+        {/* =================================
+            CANDIDATE
+        ================================= */}
 
         {currentUser?.role === "candidate" && (
           <Link to="/applications">
@@ -95,7 +174,9 @@ function Navbar() {
         )}
 
 
-        {/* ================= PROFILE ================= */}
+        {/* =================================
+            PROFILE
+        ================================= */}
 
         {currentUser && (
           <Link to="/profile">
@@ -106,11 +187,17 @@ function Navbar() {
       </div>
 
 
-      {/* ================= RIGHT SIDE ================= */}
+      {/* =====================================
+          RIGHT SIDE
+      ===================================== */}
 
       <div className="nav-actions">
 
         {currentUser ? (
+
+          /* =================================
+             LOGGED IN
+          ================================= */
 
           <>
 
@@ -121,14 +208,10 @@ function Navbar() {
             </span>
 
 
-            {/* ROLE */}
+            {/* ROLE BADGE */}
 
             <span className="role-badge">
-
-              {currentUser.role === "recruiter"
-                ? "Recruiter"
-                : "Candidate"}
-
+              {getRoleName()}
             </span>
 
 
@@ -146,9 +229,23 @@ function Navbar() {
 
         ) : (
 
+          /* =================================
+             LOGGED OUT
+          ================================= */
+
           <>
 
-            {/* LOGIN */}
+            {/* ADMIN LOGIN */}
+
+            <Link
+              to="/admin-login"
+              className="login-link"
+            >
+              Admin
+            </Link>
+
+
+            {/* NORMAL LOGIN */}
 
             <Link
               to="/login"

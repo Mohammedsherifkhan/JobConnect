@@ -7,53 +7,116 @@ import {
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+/* =========================================
+   GENERAL PAGES
+========================================= */
+
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import Profile from "./pages/Profile";
+
+/* =========================================
+   RECRUITER PAGES
+========================================= */
+
 import PostJob from "./pages/PostJob";
-import ApplyJob from "./pages/ApplyJob";
 import RecruiterDashboard from "./pages/RecruiterDashboard";
-import Applications from "./pages/Applications";
 import RecruiterApplications from "./pages/RecruiterApplications";
 
+/* =========================================
+   CANDIDATE PAGES
+========================================= */
+
+import ApplyJob from "./pages/ApplyJob";
+import Applications from "./pages/Applications";
+
+/* =========================================
+   ADMIN PAGES
+========================================= */
+
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
+
+/* =========================================
+   CSS
+========================================= */
+
 import "./App.css";
+
 
 function App() {
   return (
     <BrowserRouter>
 
-      {/* NAVBAR */}
+      {/* =====================================
+          NAVBAR
+      ===================================== */}
+
       <Navbar />
+
+
+      {/* =====================================
+          ROUTES
+      ===================================== */}
 
       <Routes>
 
-        {/* HOME */}
+        {/* ===================================
+            HOME
+        =================================== */}
+
         <Route
           path="/"
           element={<Home />}
         />
 
-        {/* LOGIN */}
+
+        {/* ===================================
+            LOGIN
+        =================================== */}
+
         <Route
           path="/login"
           element={<Login />}
         />
 
-        {/* REGISTER */}
+
+        {/* ===================================
+            REGISTER
+        =================================== */}
+
         <Route
           path="/register"
           element={<Register />}
         />
 
-        {/* FORGOT PASSWORD */}
+
+        {/* ===================================
+            FORGOT PASSWORD
+        =================================== */}
+
         <Route
           path="/forgot-password"
           element={<ForgotPassword />}
         />
 
-        {/* PROFILE */}
+
+        {/* ===================================
+            ADMIN LOGIN
+        =================================== */}
+
+        <Route
+          path="/admin-login"
+          element={<AdminLogin />}
+        />
+
+
+        {/* ===================================
+            PROFILE
+        =================================== */}
+
         <Route
           path="/profile"
           element={
@@ -63,7 +126,12 @@ function App() {
           }
         />
 
-        {/* POST JOB - RECRUITER */}
+
+        {/* ===================================
+            RECRUITER
+            POST JOB
+        =================================== */}
+
         <Route
           path="/post-job"
           element={
@@ -73,7 +141,12 @@ function App() {
           }
         />
 
-        {/* RECRUITER DASHBOARD */}
+
+        {/* ===================================
+            RECRUITER
+            DASHBOARD
+        =================================== */}
+
         <Route
           path="/recruiter-dashboard"
           element={
@@ -83,7 +156,27 @@ function App() {
           }
         />
 
-        {/* APPLY JOB - CANDIDATE */}
+
+        {/* ===================================
+            RECRUITER
+            APPLICATIONS
+        =================================== */}
+
+        <Route
+          path="/applications/:jobId"
+          element={
+            <ProtectedRoute role="recruiter">
+              <RecruiterApplications />
+            </ProtectedRoute>
+          }
+        />
+
+
+        {/* ===================================
+            CANDIDATE
+            APPLY JOB
+        =================================== */}
+
         <Route
           path="/apply/:jobId"
           element={
@@ -93,7 +186,12 @@ function App() {
           }
         />
 
-        {/* CANDIDATE APPLICATIONS */}
+
+        {/* ===================================
+            CANDIDATE
+            APPLICATIONS
+        =================================== */}
+
         <Route
           path="/applications"
           element={
@@ -103,12 +201,17 @@ function App() {
           }
         />
 
-        {/* RECRUITER APPLICATIONS */}
+
+        {/* ===================================
+            ADMIN
+            DASHBOARD
+        =================================== */}
+
         <Route
-          path="/applications/:jobId"
+          path="/admin-dashboard"
           element={
-            <ProtectedRoute role="recruiter">
-              <RecruiterApplications />
+            <ProtectedRoute role="admin">
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />
