@@ -1,14 +1,13 @@
 import { Navigate } from "react-router-dom";
 
 function ProtectedRoute({ children, role }) {
-  // Get logged-in user
   const savedUser = localStorage.getItem(
     "jobconnect_current_user"
   );
 
-  // User is not logged in
+  /* User not logged in */
+
   if (!savedUser) {
-    // Admin goes to Admin Login
     if (role === "admin") {
       return (
         <Navigate
@@ -18,7 +17,6 @@ function ProtectedRoute({ children, role }) {
       );
     }
 
-    // Candidate / Recruiter goes to normal Login
     return (
       <Navigate
         to="/login"
@@ -29,7 +27,8 @@ function ProtectedRoute({ children, role }) {
 
   let user;
 
-  // Convert saved user data
+  /* Validate stored user */
+
   try {
     user = JSON.parse(savedUser);
   } catch (error) {
@@ -44,13 +43,18 @@ function ProtectedRoute({ children, role }) {
 
     return (
       <Navigate
-        to="/login"
+        to={
+          role === "admin"
+            ? "/admin-login"
+            : "/login"
+        }
         replace
       />
     );
   }
 
-  // Check required role
+  /* Check role */
+
   if (role && user.role !== role) {
     return (
       <Navigate
@@ -60,7 +64,6 @@ function ProtectedRoute({ children, role }) {
     );
   }
 
-  // Everything is correct
   return children;
 }
 

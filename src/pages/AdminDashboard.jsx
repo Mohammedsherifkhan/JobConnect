@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 
 import "../Dashboard.css";
@@ -6,25 +11,148 @@ import "../Dashboard.css";
 function AdminDashboard() {
   const navigate = useNavigate();
 
+  /* =====================================================
+     STATES
+  ===================================================== */
+
   const [admin, setAdmin] = useState(null);
+
   const [users, setUsers] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
 
-  /* =========================================
-     LOAD ADMIN DATA
-  ========================================= */
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadAdminData = () => {
+  // User filters
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+
+  // Job filters
+  const [jobSearch, setJobSearch] = useState("");
+  const [jobTypeFilter, setJobTypeFilter] = useState("all");
+
+  // Application filters
+  const [applicationSearch, setApplicationSearch] =
+    useState("");
+
+  const [applicationStatusFilter, setApplicationStatusFilter] =
+    useState("all");
+
+  /* =====================================================
+     MODAL STATE
+  ===================================================== */
+
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "Delete",
+    type: "danger",
+    onConfirm: null,
+  });
+
+  /* =====================================================
+     TOAST STATE
+  ===================================================== */
+
+  const [toast, setToast] = useState({
+    visible: false,
+    type: "success",
+    message: "",
+  });
+
+  /* =====================================================
+     SAFE ARRAY PARSER
+  ===================================================== */
+
+  const readArrayFromStorage = (key) => {
+    try {
+      const value = localStorage.getItem(key);
+
+      if (!value) {
+        return [];
+      }
+
+      const parsed = JSON.parse(value);
+
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error(`Error reading ${key}:`, error);
+
+      return [];
+    }
+  };
+
+  /* =====================================================
+     TOAST HELPER
+  ===================================================== */
+
+  const showToast = useCallback(
+    (message, type = "success") => {
+      setToast({
+        visible: true,
+        type,
+        message,
+      });
+
+      window.setTimeout(() => {
+        setToast((current) => ({
+          ...current,
+          visible: false,
+        }));
+      }, 3000);
+    },
+    []
+  );
+
+  /* =====================================================
+     CLOSE MODAL
+  ===================================================== */
+
+  const closeConfirmModal = () => {
+    setConfirmModal({
+      open: false,
+      title: "",
+      message: "",
+      confirmText: "Delete",
+      type: "danger",
+      onConfirm: null,
+    });
+  };
+
+  /* =====================================================
+     OPEN CONFIRMATION MODAL
+  ===================================================== */
+
+  const openConfirmModal = ({
+    title,
+    message,
+    confirmText = "Delete",
+    type = "danger",
+    onConfirm,
+  }) => {
+    setConfirmModal({
+      open: true,
+      title,
+      message,
+      confirmText,
+      type,
+      onConfirm,
+    });
+  };
+
+  /* =====================================================
+     LOAD ADMIN DATA
+  ===================================================== */
+
+  const loadAdminData = useCallback(() => {
     const savedUser = localStorage.getItem(
       "jobconnect_current_user"
     );
 
-    /* -----------------------------------------
-       CHECK ADMIN LOGIN
-    ----------------------------------------- */
-
     if (!savedUser) {
+      setAdmin(null);
       navigate("/admin-login");
       return;
     }
@@ -34,137 +162,137 @@ function AdminDashboard() {
     try {
       currentUser = JSON.parse(savedUser);
     } catch (error) {
-      console.error(
-        "Invalid admin data:",
-        error
+      console.error("Invalid admin data:", error);
+
+      localStorage.removeItem(
+        "jobconnect_current_user"
       );
+
+      setAdmin(null);
 
       navigate("/admin-login");
       return;
     }
 
-    /* -----------------------------------------
-       CHECK ADMIN ROLE
-    ----------------------------------------- */
+    /* ---------------------------------------------
+       ADMIN ACCESS PROTECTION
+    --------------------------------------------- */
 
-    if (currentUser.role !== "admin") {
+    if (!currentUser || currentUser.role !== "admin") {
+      setAdmin(null);
       navigate("/");
       return;
     }
 
     setAdmin(currentUser);
 
-    /* -----------------------------------------
-       LOAD USERS
-    ----------------------------------------- */
+    /* ---------------------------------------------
+       LOAD DATA
+    --------------------------------------------- */
 
     const savedUsers =
-      JSON.parse(
-        localStorage.getItem(
-          "jobconnect_users"
-        )
-      ) || [];
-
-    /* -----------------------------------------
-       LOAD JOBS
-    ----------------------------------------- */
+      readArrayFromStorage("jobconnect_users");
 
     const savedJobs =
-      JSON.parse(
-        localStorage.getItem(
-          "jobconnect_jobs"
-        )
-      ) || [];
-
-    /* -----------------------------------------
-       LOAD APPLICATIONS
-    ----------------------------------------- */
+      readArrayFromStorage("jobconnect_jobs");
 
     const savedApplications =
-      JSON.parse(
-        localStorage.getItem(
-          "jobconnect_applications"
-        )
-      ) || [];
+      readArrayFromStorage(
+        "jobconnect_applications"
+      );
 
     setUsers(savedUsers);
     setJobs(savedJobs);
     setApplications(savedApplications);
-  };
 
-  /* =========================================
-     EFFECT
-  ========================================= */
+    setLastUpdated(new Date());
+  }, [navigate]);
+
+  /* =====================================================
+     INITIAL LOAD + EVENTS
+  ===================================================== */
 
   useEffect(() => {
     loadAdminData();
 
-    window.addEventListener(
+    const events = [
       "userLogin",
-      loadAdminData
-    );
-
-    window.addEventListener(
       "userLogout",
-      loadAdminData
-    );
-
-    window.addEventListener(
+      "userRegistered",
       "userDeleted",
-      loadAdminData
-    );
-
-    window.addEventListener(
       "jobPosted",
-      loadAdminData
-    );
-
-    window.addEventListener(
       "jobDeleted",
-      loadAdminData
-    );
+      "jobUpdated",
+      "applicationsUpdated",
+    ];
+
+    events.forEach((eventName) => {
+      window.addEventListener(
+        eventName,
+        loadAdminData
+      );
+    });
+
+    return () => {
+      events.forEach((eventName) => {
+        window.removeEventListener(
+          eventName,
+          loadAdminData
+        );
+      });
+    };
+  }, [loadAdminData]);
+
+  /* =====================================================
+     ESC KEY FOR MODAL
+  ===================================================== */
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeConfirmModal();
+      }
+    };
 
     window.addEventListener(
-      "applicationsUpdated",
-      loadAdminData
+      "keydown",
+      handleKeyDown
     );
 
     return () => {
       window.removeEventListener(
-        "userLogin",
-        loadAdminData
-      );
-
-      window.removeEventListener(
-        "userLogout",
-        loadAdminData
-      );
-
-      window.removeEventListener(
-        "userDeleted",
-        loadAdminData
-      );
-
-      window.removeEventListener(
-        "jobPosted",
-        loadAdminData
-      );
-
-      window.removeEventListener(
-        "jobDeleted",
-        loadAdminData
-      );
-
-      window.removeEventListener(
-        "applicationsUpdated",
-        loadAdminData
+        "keydown",
+        handleKeyDown
       );
     };
   }, []);
 
-  /* =========================================
+  /* =====================================================
+     MANUAL REFRESH
+  ===================================================== */
+
+  const handleRefresh = () => {
+    if (refreshing) {
+      return;
+    }
+
+    setRefreshing(true);
+
+    loadAdminData();
+
+    window.setTimeout(() => {
+      setRefreshing(false);
+
+      showToast(
+        "Dashboard data refreshed successfully.",
+        "success"
+      );
+    }, 500);
+  };
+
+  /* =====================================================
      LOGOUT
-  ========================================= */
+  ===================================================== */
 
   const handleLogout = () => {
     localStorage.removeItem(
@@ -180,202 +308,217 @@ function AdminDashboard() {
     navigate("/");
   };
 
-  /* =========================================
+  /* =====================================================
      DELETE USER
-  ========================================= */
+  ===================================================== */
 
   const deleteUser = (userId) => {
     const userToDelete = users.find(
       (user) =>
-        String(user.id) ===
-        String(userId)
+        String(user.id) === String(userId)
     );
 
     if (!userToDelete) {
-      alert("User not found.");
-      return;
-    }
-
-    const confirmDelete =
-      window.confirm(
-        `Delete ${
-          userToDelete.name ||
-          "this user"
-        }?\n\n` +
-        `This will also remove their related data.`
+      showToast(
+        "User not found.",
+        "error"
       );
 
-    if (!confirmDelete) {
       return;
     }
 
-    /* -----------------------------------------
-       DELETE USER
-    ----------------------------------------- */
+    /* ---------------------------------------------
+       PROTECT ADMIN
+    --------------------------------------------- */
 
-    const updatedUsers =
-      users.filter(
-        (user) =>
-          String(user.id) !==
+    if (userToDelete.role === "admin") {
+      showToast(
+        "Admin accounts cannot be deleted.",
+        "error"
+      );
+
+      return;
+    }
+
+    const recruiterJobs = jobs.filter(
+      (job) =>
+        String(job.recruiterId) ===
+          String(userId) ||
+        String(job.userId) ===
           String(userId)
-      );
-
-    /* -----------------------------------------
-       FIND RECRUITER JOBS
-    ----------------------------------------- */
-
-    const recruiterJobs =
-      jobs.filter(
-        (job) =>
-          String(job.recruiterId) ===
-            String(userId) ||
-          String(job.userId) ===
-            String(userId)
-      );
+    );
 
     const recruiterJobIds =
-      recruiterJobs.map(
-        (job) =>
-          String(job.id)
+      recruiterJobs.map((job) =>
+        String(job.id)
       );
 
-    /* -----------------------------------------
-       DELETE RECRUITER JOBS
-    ----------------------------------------- */
-
-    const updatedJobs =
-      jobs.filter(
-        (job) =>
-          !recruiterJobIds.includes(
-            String(job.id)
-          )
-      );
-
-    /* -----------------------------------------
-       DELETE RELATED APPLICATIONS
-    ----------------------------------------- */
-
-    const updatedApplications =
+    const relatedApplications =
       applications.filter(
         (application) => {
-
-          /* Candidate applications */
-
-          if (
+          const belongsToCandidate =
             String(
               application.userId
-            ) === String(userId)
-          ) {
-            return false;
-          }
-
-          if (
+            ) === String(userId) ||
             String(
               application.candidateId
-            ) === String(userId)
-          ) {
-            return false;
-          }
+            ) === String(userId);
 
-          /* Recruiter's job applications */
-
-          if (
+          const belongsToRecruiterJob =
             recruiterJobIds.includes(
-              String(
-                application.jobId
-              )
-            )
-          ) {
-            return false;
-          }
+              String(application.jobId)
+            );
 
-          return true;
+          return (
+            belongsToCandidate ||
+            belongsToRecruiterJob
+          );
         }
       );
 
-    /* -----------------------------------------
-       SAVE USERS
-    ----------------------------------------- */
+    openConfirmModal({
+      title: "Delete User?",
+      message:
+        `You are about to permanently delete ${
+          userToDelete.name ||
+          "this user"
+        }.\n\n` +
+        `${recruiterJobs.length} related job(s) and ` +
+        `${relatedApplications.length} related application(s) ` +
+        `will also be removed.`,
 
-    localStorage.setItem(
-      "jobconnect_users",
-      JSON.stringify(
-        updatedUsers
-      )
-    );
+      confirmText: "Delete User",
 
-    /* -----------------------------------------
-       SAVE JOBS
-    ----------------------------------------- */
+      type: "danger",
 
-    localStorage.setItem(
-      "jobconnect_jobs",
-      JSON.stringify(
-        updatedJobs
-      )
-    );
+      onConfirm: () => {
+        /* -----------------------------------------
+           REMOVE USER
+        ----------------------------------------- */
 
-    /* -----------------------------------------
-       SAVE APPLICATIONS
-    ----------------------------------------- */
+        const updatedUsers = users.filter(
+          (user) =>
+            String(user.id) !==
+            String(userId)
+        );
 
-    localStorage.setItem(
-      "jobconnect_applications",
-      JSON.stringify(
-        updatedApplications
-      )
-    );
+        /* -----------------------------------------
+           REMOVE JOBS
+        ----------------------------------------- */
 
-    /* -----------------------------------------
-       UPDATE STATE
-    ----------------------------------------- */
+        const updatedJobs = jobs.filter(
+          (job) =>
+            !recruiterJobIds.includes(
+              String(job.id)
+            )
+        );
 
-    setUsers(updatedUsers);
-    setJobs(updatedJobs);
-    setApplications(
-      updatedApplications
-    );
+        /* -----------------------------------------
+           REMOVE APPLICATIONS
+        ----------------------------------------- */
 
-    /* -----------------------------------------
-       UPDATE OTHER COMPONENTS
-    ----------------------------------------- */
+        const updatedApplications =
+          applications.filter(
+            (application) => {
+              const belongsToCandidate =
+                String(
+                  application.userId
+                ) === String(userId) ||
+                String(
+                  application.candidateId
+                ) === String(userId);
 
-    window.dispatchEvent(
-      new Event("userDeleted")
-    );
+              const belongsToRecruiterJob =
+                recruiterJobIds.includes(
+                  String(application.jobId)
+                );
 
-    window.dispatchEvent(
-      new Event("jobDeleted")
-    );
+              return (
+                !belongsToCandidate &&
+                !belongsToRecruiterJob
+              );
+            }
+          );
 
-    window.dispatchEvent(
-      new Event(
-        "applicationsUpdated"
-      )
-    );
+        /* -----------------------------------------
+           SAVE
+        ----------------------------------------- */
 
-    alert(
-      `${
-        userToDelete.name ||
-        "User"
-      } deleted successfully.`
-    );
+        localStorage.setItem(
+          "jobconnect_users",
+          JSON.stringify(updatedUsers)
+        );
+
+        localStorage.setItem(
+          "jobconnect_jobs",
+          JSON.stringify(updatedJobs)
+        );
+
+        localStorage.setItem(
+          "jobconnect_applications",
+          JSON.stringify(
+            updatedApplications
+          )
+        );
+
+        /* -----------------------------------------
+           STATE
+        ----------------------------------------- */
+
+        setUsers(updatedUsers);
+        setJobs(updatedJobs);
+        setApplications(
+          updatedApplications
+        );
+
+        /* -----------------------------------------
+           EVENTS
+        ----------------------------------------- */
+
+        window.dispatchEvent(
+          new Event("userDeleted")
+        );
+
+        window.dispatchEvent(
+          new Event("jobDeleted")
+        );
+
+        window.dispatchEvent(
+          new Event("applicationsUpdated")
+        );
+
+        setLastUpdated(new Date());
+
+        showToast(
+          `${
+            userToDelete.name ||
+            "User"
+          } deleted successfully.`,
+          "success"
+        );
+
+        closeConfirmModal();
+      },
+    });
   };
 
-  /* =========================================
+  /* =====================================================
      DELETE JOB
-  ========================================= */
+  ===================================================== */
 
   const deleteJob = (jobId) => {
-    const jobToDelete =
-      jobs.find(
-        (job) =>
-          String(job.id) ===
-          String(jobId)
-      );
+    const jobToDelete = jobs.find(
+      (job) =>
+        String(job.id) ===
+        String(jobId)
+    );
 
     if (!jobToDelete) {
-      alert("Job not found.");
+      showToast(
+        "Job not found.",
+        "error"
+      );
+
       return;
     }
 
@@ -387,88 +530,95 @@ function AdminDashboard() {
           ) === String(jobId)
       );
 
-    const confirmDelete =
-      window.confirm(
-        `Delete "${jobToDelete.title}"?\n\n` +
-        `${relatedApplications.length} related application(s) will also be deleted.`
-      );
+    openConfirmModal({
+      title: "Delete Job?",
+      message:
+        `You are about to permanently delete "${
+          jobToDelete.title ||
+          "this job"
+        }".\n\n` +
+        `${relatedApplications.length} related application(s) ` +
+        `will also be deleted.`,
 
-    if (!confirmDelete) {
-      return;
-    }
+      confirmText: "Delete Job",
 
-    /* -----------------------------------------
-       DELETE JOB
-    ----------------------------------------- */
+      type: "danger",
 
-    const updatedJobs =
-      jobs.filter(
-        (job) =>
-          String(job.id) !==
-          String(jobId)
-      );
+      onConfirm: () => {
+        /* -----------------------------------------
+           REMOVE JOB
+        ----------------------------------------- */
 
-    /* -----------------------------------------
-       DELETE APPLICATIONS
-    ----------------------------------------- */
+        const updatedJobs = jobs.filter(
+          (job) =>
+            String(job.id) !==
+            String(jobId)
+        );
 
-    const updatedApplications =
-      applications.filter(
-        (application) =>
-          String(
-            application.jobId
-          ) !== String(jobId)
-      );
+        /* -----------------------------------------
+           REMOVE APPLICATIONS
+        ----------------------------------------- */
 
-    /* -----------------------------------------
-       SAVE
-    ----------------------------------------- */
+        const updatedApplications =
+          applications.filter(
+            (application) =>
+              String(
+                application.jobId
+              ) !== String(jobId)
+          );
 
-    localStorage.setItem(
-      "jobconnect_jobs",
-      JSON.stringify(
-        updatedJobs
-      )
-    );
+        /* -----------------------------------------
+           SAVE
+        ----------------------------------------- */
 
-    localStorage.setItem(
-      "jobconnect_applications",
-      JSON.stringify(
-        updatedApplications
-      )
-    );
+        localStorage.setItem(
+          "jobconnect_jobs",
+          JSON.stringify(updatedJobs)
+        );
 
-    /* -----------------------------------------
-       UPDATE STATE
-    ----------------------------------------- */
+        localStorage.setItem(
+          "jobconnect_applications",
+          JSON.stringify(
+            updatedApplications
+          )
+        );
 
-    setJobs(updatedJobs);
-    setApplications(
-      updatedApplications
-    );
+        /* -----------------------------------------
+           STATE
+        ----------------------------------------- */
 
-    /* -----------------------------------------
-       EVENTS
-    ----------------------------------------- */
+        setJobs(updatedJobs);
+        setApplications(
+          updatedApplications
+        );
 
-    window.dispatchEvent(
-      new Event("jobDeleted")
-    );
+        /* -----------------------------------------
+           EVENTS
+        ----------------------------------------- */
 
-    window.dispatchEvent(
-      new Event(
-        "applicationsUpdated"
-      )
-    );
+        window.dispatchEvent(
+          new Event("jobDeleted")
+        );
 
-    alert(
-      "Job and related applications deleted successfully."
-    );
+        window.dispatchEvent(
+          new Event("applicationsUpdated")
+        );
+
+        setLastUpdated(new Date());
+
+        showToast(
+          "Job and related applications deleted successfully.",
+          "success"
+        );
+
+        closeConfirmModal();
+      },
+    });
   };
 
-  /* =========================================
+  /* =====================================================
      DELETE APPLICATION
-  ========================================= */
+  ===================================================== */
 
   const deleteApplication = (
     applicationId
@@ -481,35 +631,101 @@ function AdminDashboard() {
       );
 
     if (!application) {
-      alert(
-        "Application not found."
+      showToast(
+        "Application not found.",
+        "error"
       );
+
       return;
     }
 
-    const confirmDelete =
-      window.confirm(
-        "Are you sure you want to delete this application?"
-      );
+    openConfirmModal({
+      title: "Delete Application?",
+      message:
+        "This application will be permanently removed from JobConnect.",
 
-    if (!confirmDelete) {
-      return;
-    }
+      confirmText:
+        "Delete Application",
 
-    /* -----------------------------------------
-       DELETE APPLICATION
-    ----------------------------------------- */
+      type: "danger",
 
-    const updatedApplications =
-      applications.filter(
-        (item) =>
-          String(item.id) !==
+      onConfirm: () => {
+        const updatedApplications =
+          applications.filter(
+            (item) =>
+              String(item.id) !==
+              String(applicationId)
+          );
+
+        localStorage.setItem(
+          "jobconnect_applications",
+          JSON.stringify(
+            updatedApplications
+          )
+        );
+
+        setApplications(
+          updatedApplications
+        );
+
+        window.dispatchEvent(
+          new Event(
+            "applicationsUpdated"
+          )
+        );
+
+        setLastUpdated(new Date());
+
+        showToast(
+          "Application deleted successfully.",
+          "success"
+        );
+
+        closeConfirmModal();
+      },
+    });
+  };
+
+  /* =====================================================
+     UPDATE APPLICATION STATUS
+  ===================================================== */
+
+  const updateApplicationStatus = (
+    applicationId,
+    newStatus
+  ) => {
+    const exists =
+      applications.some(
+        (application) =>
+          String(application.id) ===
           String(applicationId)
       );
 
-    /* -----------------------------------------
-       SAVE
-    ----------------------------------------- */
+    if (!exists) {
+      showToast(
+        "Application not found.",
+        "error"
+      );
+
+      return;
+    }
+
+    const updatedApplications =
+      applications.map(
+        (application) => {
+          if (
+            String(application.id) !==
+            String(applicationId)
+          ) {
+            return application;
+          }
+
+          return {
+            ...application,
+            status: newStatus,
+          };
+        }
+      );
 
     localStorage.setItem(
       "jobconnect_applications",
@@ -518,17 +734,9 @@ function AdminDashboard() {
       )
     );
 
-    /* -----------------------------------------
-       UPDATE STATE
-    ----------------------------------------- */
-
     setApplications(
       updatedApplications
     );
-
-    /* -----------------------------------------
-       EVENT
-    ----------------------------------------- */
 
     window.dispatchEvent(
       new Event(
@@ -536,41 +744,149 @@ function AdminDashboard() {
       )
     );
 
-    alert(
-      "Application deleted successfully."
+    setLastUpdated(new Date());
+
+    showToast(
+      `Application status updated to ${newStatus}.`,
+      "success"
     );
   };
 
-  /* =========================================
+  /* =====================================================
      USER COUNTS
-  ========================================= */
+  ===================================================== */
 
   const candidateCount =
     users.filter(
       (user) =>
-        user.role ===
-        "candidate"
+        user.role === "candidate"
     ).length;
 
   const recruiterCount =
     users.filter(
       (user) =>
-        user.role ===
-        "recruiter"
+        user.role === "recruiter"
     ).length;
 
-  /* =========================================
+  const adminCount =
+    users.filter(
+      (user) =>
+        user.role === "admin"
+    ).length;
+
+  /* =====================================================
+     USER FILTERS
+  ===================================================== */
+
+  const filteredUsers = useMemo(() => {
+    const search =
+      userSearch
+        .toLowerCase()
+        .trim();
+
+    return users.filter((user) => {
+      const userName =
+        (user.name || "").toLowerCase();
+
+      const userEmail =
+        (user.email || "").toLowerCase();
+
+      const matchesSearch =
+        !search ||
+        userName.includes(search) ||
+        userEmail.includes(search);
+
+      const matchesRole =
+        userRoleFilter === "all" ||
+        user.role === userRoleFilter;
+
+      return (
+        matchesSearch &&
+        matchesRole
+      );
+    });
+  }, [
+    users,
+    userSearch,
+    userRoleFilter,
+  ]);
+
+  /* =====================================================
+     JOB TYPES
+  ===================================================== */
+
+  const jobTypes = useMemo(() => {
+    const types = jobs
+      .map((job) =>
+        String(job.type || "")
+          .trim()
+      )
+      .filter(Boolean);
+
+    return [...new Set(types)];
+  }, [jobs]);
+
+  /* =====================================================
+     FILTER JOBS
+  ===================================================== */
+
+  const filteredJobs = useMemo(() => {
+    const search =
+      jobSearch
+        .toLowerCase()
+        .trim();
+
+    return jobs.filter((job) => {
+      const title =
+        (job.title || "").toLowerCase();
+
+      const company =
+        (job.company || "").toLowerCase();
+
+      const location =
+        (job.location || "").toLowerCase();
+
+      const type =
+        (job.type || "").toLowerCase();
+
+      const matchesSearch =
+        !search ||
+        title.includes(search) ||
+        company.includes(search) ||
+        location.includes(search) ||
+        type.includes(search);
+
+      const matchesType =
+        jobTypeFilter === "all" ||
+        job.type === jobTypeFilter;
+
+      return (
+        matchesSearch &&
+        matchesType
+      );
+    });
+  }, [
+    jobs,
+    jobSearch,
+    jobTypeFilter,
+  ]);
+
+  /* =====================================================
      APPLICATION COUNTS
-  ========================================= */
+  ===================================================== */
 
   const pendingCount =
     applications.filter(
-      (application) =>
-        !application.status ||
-        application.status ===
-          "Applied" ||
-        application.status ===
-          "Pending"
+      (application) => {
+        const status =
+          application.status ||
+          "Applied";
+
+        return (
+          status === "Applied" ||
+          status === "Pending"
+        );
+      }
     ).length;
 
   const acceptedCount =
@@ -587,26 +903,147 @@ function AdminDashboard() {
         "Rejected"
     ).length;
 
-  /* =========================================
+  /* =====================================================
+     APPLICATION FILTERS
+  ===================================================== */
+
+  const filteredApplications =
+    useMemo(() => {
+      const search =
+        applicationSearch
+          .toLowerCase()
+          .trim();
+
+      return applications.filter(
+        (application) => {
+          const currentStatus =
+            application.status ||
+            "Applied";
+
+          const candidateName =
+            (
+              application.candidateName ||
+              ""
+            ).toLowerCase();
+
+          const candidateEmail =
+            (
+              application.candidateEmail ||
+              application.userEmail ||
+              ""
+            ).toLowerCase();
+
+          const jobTitle =
+            (
+              application.title ||
+              ""
+            ).toLowerCase();
+
+          const company =
+            (
+              application.company ||
+              ""
+            ).toLowerCase();
+
+          const matchesSearch =
+            !search ||
+            candidateName.includes(
+              search
+            ) ||
+            candidateEmail.includes(
+              search
+            ) ||
+            jobTitle.includes(
+              search
+            ) ||
+            company.includes(search);
+
+          const matchesStatus =
+            applicationStatusFilter ===
+              "all" ||
+            currentStatus ===
+              applicationStatusFilter;
+
+          return (
+            matchesSearch &&
+            matchesStatus
+          );
+        }
+      );
+    }, [
+      applications,
+      applicationSearch,
+      applicationStatusFilter,
+    ]);
+
+  /* =====================================================
+     RECENT APPLICATIONS
+  ===================================================== */
+
+  const recentApplications =
+    useMemo(() => {
+      return [...applications]
+        .slice(-5)
+        .reverse();
+    }, [applications]);
+
+  /* =====================================================
      LOADING
-  ========================================= */
+  ===================================================== */
 
   if (!admin) {
     return null;
   }
 
-  /* =========================================
-     ADMIN DASHBOARD
-  ========================================= */
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
     <div className="dashboard-page">
 
+      {/* =================================================
+          TOAST
+      ================================================= */}
+
+      {toast.visible && (
+        <div
+          className={`admin-toast ${
+            toast.type === "error"
+              ? "admin-toast-error"
+              : "admin-toast-success"
+          }`}
+        >
+          <span className="admin-toast-icon">
+            {toast.type === "error"
+              ? "⚠️"
+              : "✅"}
+          </span>
+
+          <span>
+            {toast.message}
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setToast((current) => ({
+                ...current,
+                visible: false,
+              }))
+            }
+            aria-label="Close notification"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="dashboard-container">
 
-        {/* =====================================
+        {/* =================================================
             HEADER
-        ===================================== */}
+        ================================================= */}
 
         <div className="dashboard-header">
 
@@ -618,45 +1055,73 @@ function AdminDashboard() {
 
             <h1>
               Welcome,{" "}
-              {admin.name} 👋
+              {admin.name || "Admin"} 👋
             </h1>
 
             <p>
               Manage users, jobs and
-              applications.
+              applications from one place.
             </p>
+
+            {lastUpdated && (
+              <small
+                style={{
+                  opacity: 0.65,
+                  display: "block",
+                  marginTop: "8px",
+                }}
+              >
+                Last updated:{" "}
+                {lastUpdated.toLocaleTimeString()}
+              </small>
+            )}
 
           </div>
 
-          <button
-            type="button"
-            className="dashboard-post-btn"
-            onClick={
-              handleLogout
-            }
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
           >
-            Logout
-          </button>
+
+            <button
+              type="button"
+              className="dashboard-post-btn"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              {refreshing
+                ? "⏳ Refreshing..."
+                : "🔄 Refresh"}
+            </button>
+
+            <button
+              type="button"
+              className="dashboard-post-btn"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+
+          </div>
 
         </div>
 
-
-        {/* =====================================
+        {/* =================================================
             MAIN STATISTICS
-        ===================================== */}
+        ================================================= */}
 
         <div className="dashboard-stats">
 
-          {/* TOTAL USERS */}
-
           <div className="stat-card">
-
             <div className="stat-icon">
               👥
             </div>
 
             <div>
-
               <span>
                 Total Users
               </span>
@@ -664,22 +1129,15 @@ function AdminDashboard() {
               <strong>
                 {users.length}
               </strong>
-
             </div>
-
           </div>
 
-
-          {/* CANDIDATES */}
-
           <div className="stat-card">
-
             <div className="stat-icon">
               👤
             </div>
 
             <div>
-
               <span>
                 Candidates
               </span>
@@ -687,22 +1145,15 @@ function AdminDashboard() {
               <strong>
                 {candidateCount}
               </strong>
-
             </div>
-
           </div>
 
-
-          {/* RECRUITERS */}
-
           <div className="stat-card">
-
             <div className="stat-icon">
               💼
             </div>
 
             <div>
-
               <span>
                 Recruiters
               </span>
@@ -710,22 +1161,15 @@ function AdminDashboard() {
               <strong>
                 {recruiterCount}
               </strong>
-
             </div>
-
           </div>
 
-
-          {/* JOBS */}
-
           <div className="stat-card">
-
             <div className="stat-icon">
               📋
             </div>
 
             <div>
-
               <span>
                 Total Jobs
               </span>
@@ -733,22 +1177,15 @@ function AdminDashboard() {
               <strong>
                 {jobs.length}
               </strong>
-
             </div>
-
           </div>
 
-
-          {/* APPLICATIONS */}
-
           <div className="stat-card">
-
             <div className="stat-icon">
               📄
             </div>
 
             <div>
-
               <span>
                 Applications
               </span>
@@ -756,17 +1193,103 @@ function AdminDashboard() {
               <strong>
                 {applications.length}
               </strong>
+            </div>
+          </div>
 
+        </div>
+
+        {/* =================================================
+            PLATFORM OVERVIEW
+        ================================================= */}
+
+        <div className="dashboard-section">
+
+          <div className="section-title">
+
+            <h2>
+              Platform Overview
+            </h2>
+
+            <p>
+              Current JobConnect platform
+              activity.
+            </p>
+
+          </div>
+
+          <div className="dashboard-stats">
+
+            <div className="stat-card">
+              <div className="stat-icon">
+                🛡️
+              </div>
+
+              <div>
+                <span>
+                  Admins
+                </span>
+
+                <strong>
+                  {adminCount}
+                </strong>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">
+                ⏳
+              </div>
+
+              <div>
+                <span>
+                  Pending
+                </span>
+
+                <strong>
+                  {pendingCount}
+                </strong>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">
+                ✅
+              </div>
+
+              <div>
+                <span>
+                  Accepted
+                </span>
+
+                <strong>
+                  {acceptedCount}
+                </strong>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">
+                ❌
+              </div>
+
+              <div>
+                <span>
+                  Rejected
+                </span>
+
+                <strong>
+                  {rejectedCount}
+                </strong>
+              </div>
             </div>
 
           </div>
 
         </div>
 
-
-        {/* =====================================
+        {/* =================================================
             USERS
-        ===================================== */}
+        ================================================= */}
 
         <div className="dashboard-section">
 
@@ -777,17 +1300,55 @@ function AdminDashboard() {
             </h2>
 
             <p>
-              Users registered on
-              JobConnect.
+              Search and manage users
+              registered on JobConnect.
             </p>
 
           </div>
 
+          <div className="admin-filters">
+
+            <input
+              type="text"
+              placeholder="🔎 Search users by name or email..."
+              value={userSearch}
+              onChange={(event) =>
+                setUserSearch(
+                  event.target.value
+                )
+              }
+            />
+
+            <select
+              value={userRoleFilter}
+              onChange={(event) =>
+                setUserRoleFilter(
+                  event.target.value
+                )
+              }
+            >
+              <option value="all">
+                All Users
+              </option>
+
+              <option value="candidate">
+                Candidates
+              </option>
+
+              <option value="recruiter">
+                Recruiters
+              </option>
+
+              <option value="admin">
+                Admins
+              </option>
+            </select>
+
+          </div>
 
           {users.length === 0 ? (
 
             <div className="empty-dashboard">
-
               <div className="empty-icon">
                 👥
               </div>
@@ -797,17 +1358,33 @@ function AdminDashboard() {
               </h3>
 
               <p>
-                Registered users
-                will appear here.
+                Registered users will
+                appear here.
               </p>
+            </div>
 
+          ) : filteredUsers.length === 0 ? (
+
+            <div className="empty-dashboard">
+              <div className="empty-icon">
+                🔎
+              </div>
+
+              <h3>
+                No matching users
+              </h3>
+
+              <p>
+                Try changing your
+                search or role filter.
+              </p>
             </div>
 
           ) : (
 
             <div className="recruiter-applications">
 
-              {users.map(
+              {filteredUsers.map(
                 (user) => (
 
                   <div
@@ -815,74 +1392,84 @@ function AdminDashboard() {
                     key={user.id}
                   >
 
-                    {/* AVATAR */}
-
                     <div className="candidate-avatar">
-
                       {user.name
                         ? user.name
                             .charAt(0)
                             .toUpperCase()
                         : "U"}
-
                     </div>
 
-
                     <div className="candidate-content">
-
-                      {/* USER HEADER */}
 
                       <div className="candidate-header">
 
                         <div>
 
                           <h3>
-                            {
-                              user.name ||
-                              "Unknown User"
-                            }
+                            {user.name ||
+                              "Unknown User"}
                           </h3>
 
                           <p>
                             📧{" "}
-                            {
-                              user.email ||
-                              "No email"
-                            }
+                            {user.email ||
+                              "No email"}
                           </p>
 
                         </div>
 
-
-                        {/* ROLE */}
-
-                        <span className="application-status">
-
+                        <span
+                          className={`application-status ${
+                            user.role ===
+                            "admin"
+                              ? "accepted"
+                              : user.role ===
+                                "recruiter"
+                              ? "pending"
+                              : "applied"
+                          }`}
+                        >
                           {user.role ===
-                          "recruiter"
+                          "admin"
+                            ? "Admin"
+                            : user.role ===
+                              "recruiter"
                             ? "Recruiter"
                             : "Candidate"}
-
                         </span>
 
                       </div>
 
-
-                      {/* DELETE USER */}
-
                       <div className="application-actions">
 
-                        <button
-                          type="button"
-                          className="reject-btn"
-                          onClick={() =>
-                            deleteUser(
-                              user.id
-                            )
-                          }
-                        >
-                          🗑️ Delete User
-                        </button>
+                        {user.role === "admin" ? (
+
+                          <span
+                            style={{
+                              opacity: 0.65,
+                              fontSize:
+                                "14px",
+                            }}
+                          >
+                            🛡️ Protected account
+                          </span>
+
+                        ) : (
+
+                          <button
+                            type="button"
+                            className="reject-btn"
+                            onClick={() =>
+                              deleteUser(
+                                user.id
+                              )
+                            }
+                          >
+                            🗑️ Delete User
+                          </button>
+
+                        )}
 
                       </div>
 
@@ -899,10 +1486,9 @@ function AdminDashboard() {
 
         </div>
 
-
-        {/* =====================================
+        {/* =================================================
             JOBS
-        ===================================== */}
+        ================================================= */}
 
         <div className="dashboard-section">
 
@@ -913,12 +1499,52 @@ function AdminDashboard() {
             </h2>
 
             <p>
-              Jobs currently posted
-              by recruiters.
+              Search and manage jobs
+              posted by recruiters.
             </p>
 
           </div>
 
+          <div className="admin-filters">
+
+            <input
+              type="text"
+              placeholder="🔎 Search job, company or location..."
+              value={jobSearch}
+              onChange={(event) =>
+                setJobSearch(
+                  event.target.value
+                )
+              }
+            />
+
+            <select
+              value={jobTypeFilter}
+              onChange={(event) =>
+                setJobTypeFilter(
+                  event.target.value
+                )
+              }
+            >
+
+              <option value="all">
+                All Job Types
+              </option>
+
+              {jobTypes.map(
+                (type) => (
+                  <option
+                    value={type}
+                    key={type}
+                  >
+                    {type}
+                  </option>
+                )
+              )}
+
+            </select>
+
+          </div>
 
           {jobs.length === 0 ? (
 
@@ -939,11 +1565,30 @@ function AdminDashboard() {
 
             </div>
 
+          ) : filteredJobs.length === 0 ? (
+
+            <div className="empty-dashboard">
+
+              <div className="empty-icon">
+                🔎
+              </div>
+
+              <h3>
+                No matching jobs
+              </h3>
+
+              <p>
+                Try changing your
+                search or job type filter.
+              </p>
+
+            </div>
+
           ) : (
 
             <div className="recruiter-jobs">
 
-              {jobs.map(
+              {filteredJobs.map(
                 (job) => {
 
                   const jobApplicationCount =
@@ -955,6 +1600,18 @@ function AdminDashboard() {
                         String(job.id)
                     ).length;
 
+                  const recruiter =
+                    users.find(
+                      (user) =>
+                        String(
+                          user.id
+                        ) ===
+                        String(
+                          job.recruiterId ||
+                            job.userId
+                        )
+                    );
+
                   return (
 
                     <div
@@ -965,65 +1622,57 @@ function AdminDashboard() {
                       <div className="recruiter-job-info">
 
                         <span className="job-type-badge">
-                          {
-                            job.type ||
-                            "Job"
-                          }
+                          {job.type ||
+                            "Job"}
                         </span>
 
                         <h3>
-                          {
-                            job.title ||
-                            "Untitled Job"
-                          }
+                          {job.title ||
+                            "Untitled Job"}
                         </h3>
 
                         <p>
-                          {
-                            job.company ||
-                            "Company"
-                          }
+                          🏢{" "}
+                          {job.company ||
+                            "Company"}
                         </p>
+
+                        {recruiter && (
+                          <p>
+                            👤 Recruiter:{" "}
+                            {recruiter.name ||
+                              "Unknown"}
+                          </p>
+                        )}
 
                         <div className="job-meta">
 
                           <span>
                             📍{" "}
-                            {
-                              job.location ||
-                              "Not specified"
-                            }
+                            {job.location ||
+                              "Not specified"}
                           </span>
 
                           <span>
                             🎓{" "}
-                            {
-                              job.experience ||
-                              "Not specified"
-                            }
+                            {job.experience ||
+                              "Not specified"}
                           </span>
 
                           <span>
                             💰{" "}
-                            {
-                              job.salary ||
-                              "Not specified"
-                            }
+                            {job.salary ||
+                              "Not specified"}
                           </span>
 
                         </div>
 
                       </div>
 
-
-                      {/* JOB ACTIONS */}
-
                       <div className="job-application-info">
 
                         <strong>
-                          {
-                            jobApplicationCount
-                          }
+                          {jobApplicationCount}
                         </strong>
 
                         <span>
@@ -1056,10 +1705,9 @@ function AdminDashboard() {
 
         </div>
 
-
-        {/* =====================================
+        {/* =================================================
             APPLICATIONS
-        ===================================== */}
+        ================================================= */}
 
         <div className="dashboard-section">
 
@@ -1070,18 +1718,14 @@ function AdminDashboard() {
             </h2>
 
             <p>
-              Review applications
-              submitted by candidates.
+              Review and manage
+              applications submitted
+              by candidates.
             </p>
 
           </div>
 
-
-          {/* APPLICATION STATISTICS */}
-
           <div className="dashboard-stats">
-
-            {/* PENDING */}
 
             <div className="stat-card">
 
@@ -1090,7 +1734,6 @@ function AdminDashboard() {
               </div>
 
               <div>
-
                 <span>
                   Pending
                 </span>
@@ -1098,13 +1741,9 @@ function AdminDashboard() {
                 <strong>
                   {pendingCount}
                 </strong>
-
               </div>
 
             </div>
-
-
-            {/* ACCEPTED */}
 
             <div className="stat-card">
 
@@ -1113,7 +1752,6 @@ function AdminDashboard() {
               </div>
 
               <div>
-
                 <span>
                   Accepted
                 </span>
@@ -1121,13 +1759,9 @@ function AdminDashboard() {
                 <strong>
                   {acceptedCount}
                 </strong>
-
               </div>
 
             </div>
-
-
-            {/* REJECTED */}
 
             <div className="stat-card">
 
@@ -1136,7 +1770,6 @@ function AdminDashboard() {
               </div>
 
               <div>
-
                 <span>
                   Rejected
                 </span>
@@ -1144,15 +1777,59 @@ function AdminDashboard() {
                 <strong>
                   {rejectedCount}
                 </strong>
-
               </div>
 
             </div>
 
           </div>
 
+          <div className="admin-filters">
 
-          {/* APPLICATION LIST */}
+            <input
+              type="text"
+              placeholder="🔎 Search candidate, email, job or company..."
+              value={applicationSearch}
+              onChange={(event) =>
+                setApplicationSearch(
+                  event.target.value
+                )
+              }
+            />
+
+            <select
+              value={
+                applicationStatusFilter
+              }
+              onChange={(event) =>
+                setApplicationStatusFilter(
+                  event.target.value
+                )
+              }
+            >
+
+              <option value="all">
+                All Applications
+              </option>
+
+              <option value="Applied">
+                Applied
+              </option>
+
+              <option value="Pending">
+                Pending
+              </option>
+
+              <option value="Accepted">
+                Accepted
+              </option>
+
+              <option value="Rejected">
+                Rejected
+              </option>
+
+            </select>
+
+          </div>
 
           {applications.length === 0 ? (
 
@@ -1173,128 +1850,312 @@ function AdminDashboard() {
 
             </div>
 
+          ) : filteredApplications.length === 0 ? (
+
+            <div className="empty-dashboard">
+
+              <div className="empty-icon">
+                🔎
+              </div>
+
+              <h3>
+                No matching applications
+              </h3>
+
+              <p>
+                Try changing your
+                search or status filter.
+              </p>
+
+            </div>
+
           ) : (
 
             <div className="recruiter-applications">
 
-              {applications.map(
-                (application) => (
+              {filteredApplications.map(
+                (application) => {
 
-                  <div
-                    className="recruiter-application-card"
-                    key={
-                      application.id
-                    }
-                  >
+                  const currentStatus =
+                    application.status ||
+                    "Applied";
 
-                    {/* CANDIDATE AVATAR */}
+                  const statusClass =
+                    currentStatus
+                      .toLowerCase()
+                      .replace(
+                        /\s+/g,
+                        "-"
+                      );
 
-                    <div className="candidate-avatar">
+                  return (
 
-                      {application.candidateName
-                        ? application.candidateName
-                            .charAt(0)
-                            .toUpperCase()
-                        : "U"}
+                    <div
+                      className="recruiter-application-card"
+                      key={application.id}
+                    >
 
-                    </div>
+                      <div className="candidate-avatar">
 
+                        {application.candidateName
+                          ? application.candidateName
+                              .charAt(0)
+                              .toUpperCase()
+                          : "U"}
 
-                    <div className="candidate-content">
+                      </div>
 
-                      {/* APPLICATION HEADER */}
+                      <div className="candidate-content">
 
-                      <div className="candidate-header">
+                        <div className="candidate-header">
 
-                        <div>
+                          <div>
 
-                          <h3>
-                            {
-                              application.candidateName ||
-                              "Candidate"
-                            }
-                          </h3>
+                            <h3>
+                              {
+                                application.candidateName ||
+                                "Candidate"
+                              }
+                            </h3>
 
-                          <p>
-                            📧{" "}
-                            {
-                              application.candidateEmail ||
-                              application.userEmail ||
-                              "No email"
-                            }
-                          </p>
+                            <p>
+                              📧{" "}
+                              {
+                                application.candidateEmail ||
+                                application.userEmail ||
+                                "No email"
+                              }
+                            </p>
+
+                          </div>
+
+                          <span
+                            className={`application-status ${statusClass}`}
+                          >
+                            {currentStatus}
+                          </span>
 
                         </div>
 
+                        <div className="candidate-details">
 
-                        {/* STATUS */}
+                          <span>
+                            💼{" "}
+                            {
+                              application.title ||
+                              "Job"
+                            }
+                          </span>
 
-                        <span className="application-status">
+                          <span>
+                            🏢{" "}
+                            {
+                              application.company ||
+                              "Company"
+                            }
+                          </span>
 
-                          {
-                            application.status ||
-                            "Applied"
-                          }
+                          <span>
+                            📅{" "}
+                            {
+                              application.appliedAt ||
+                              "Recently"
+                            }
+                          </span>
 
-                        </span>
+                        </div>
 
-                      </div>
+                        <div className="application-actions">
 
+                          <select
+                            value={
+                              currentStatus
+                            }
+                            onChange={(event) =>
+                              updateApplicationStatus(
+                                application.id,
+                                event.target.value
+                              )
+                            }
+                          >
 
-                      {/* APPLICATION DETAILS */}
+                            <option value="Applied">
+                              Applied
+                            </option>
 
-                      <div className="candidate-details">
+                            <option value="Pending">
+                              Pending
+                            </option>
 
-                        <span>
-                          💼{" "}
-                          {
-                            application.title ||
-                            "Job"
-                          }
-                        </span>
+                            <option value="Accepted">
+                              Accepted
+                            </option>
 
-                        <span>
-                          🏢{" "}
-                          {
-                            application.company ||
-                            "Company"
-                          }
-                        </span>
+                            <option value="Rejected">
+                              Rejected
+                            </option>
 
-                        <span>
-                          📅{" "}
-                          {
-                            application.appliedAt ||
-                            "Recently"
-                          }
-                        </span>
+                          </select>
 
-                      </div>
+                          <button
+                            type="button"
+                            className="reject-btn"
+                            onClick={() =>
+                              deleteApplication(
+                                application.id
+                              )
+                            }
+                          >
+                            🗑️ Delete Application
+                          </button>
 
-
-                      {/* DELETE APPLICATION */}
-
-                      <div className="application-actions">
-
-                        <button
-                          type="button"
-                          className="reject-btn"
-                          onClick={() =>
-                            deleteApplication(
-                              application.id
-                            )
-                          }
-                        >
-                          🗑️ Delete Application
-                        </button>
+                        </div>
 
                       </div>
 
                     </div>
 
-                  </div>
+                  );
+                }
+              )}
 
-                )
+            </div>
+
+          )}
+
+        </div>
+
+        {/* =================================================
+            RECENT APPLICATIONS
+        ================================================= */}
+
+        <div className="dashboard-section">
+
+          <div className="section-title">
+
+            <h2>
+              Recent Applications
+            </h2>
+
+            <p>
+              Latest candidate application
+              activity.
+            </p>
+
+          </div>
+
+          {recentApplications.length === 0 ? (
+
+            <div className="empty-dashboard">
+
+              <div className="empty-icon">
+                📊
+              </div>
+
+              <h3>
+                No recent activity
+              </h3>
+
+              <p>
+                Application activity will
+                appear here.
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div className="recruiter-applications">
+
+              {recentApplications.map(
+                (application) => {
+
+                  const status =
+                    application.status ||
+                    "Applied";
+
+                  const statusClass =
+                    status
+                      .toLowerCase()
+                      .replace(
+                        /\s+/g,
+                        "-"
+                      );
+
+                  return (
+
+                    <div
+                      className="recruiter-application-card"
+                      key={`recent-${application.id}`}
+                    >
+
+                      <div className="candidate-avatar">
+
+                        {application.candidateName
+                          ? application.candidateName
+                              .charAt(0)
+                              .toUpperCase()
+                          : "U"}
+
+                      </div>
+
+                      <div className="candidate-content">
+
+                        <div className="candidate-header">
+
+                          <div>
+
+                            <h3>
+                              {
+                                application.candidateName ||
+                                "Candidate"
+                              }
+                            </h3>
+
+                            <p>
+                              Applied for{" "}
+                              {
+                                application.title ||
+                                "a job"
+                              }
+                            </p>
+
+                          </div>
+
+                          <span
+                            className={`application-status ${statusClass}`}
+                          >
+                            {status}
+                          </span>
+
+                        </div>
+
+                        <div className="candidate-details">
+
+                          <span>
+                            🏢{" "}
+                            {
+                              application.company ||
+                              "Company"
+                            }
+                          </span>
+
+                          <span>
+                            📅{" "}
+                            {
+                              application.appliedAt ||
+                              "Recently"
+                            }
+                          </span>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  );
+                }
               )}
 
             </div>
@@ -1304,6 +2165,100 @@ function AdminDashboard() {
         </div>
 
       </div>
+
+      {/* =================================================
+          CONFIRMATION MODAL
+      ================================================= */}
+
+      {confirmModal.open && (
+        <div
+          className="admin-modal-overlay"
+          onMouseDown={(event) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              closeConfirmModal();
+            }
+          }}
+        >
+
+          <div
+            className="admin-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-modal-title"
+          >
+
+            <button
+              type="button"
+              className="admin-modal-close"
+              onClick={closeConfirmModal}
+              aria-label="Close modal"
+            >
+              ×
+            </button>
+
+            <div
+              className={`admin-modal-icon ${
+                confirmModal.type ===
+                "danger"
+                  ? "admin-modal-danger"
+                  : "admin-modal-warning"
+              }`}
+            >
+              {confirmModal.type ===
+              "danger"
+                ? "🗑️"
+                : "⚠️"}
+            </div>
+
+            <h2 id="admin-modal-title">
+              {confirmModal.title}
+            </h2>
+
+            <p>
+              {confirmModal.message}
+            </p>
+
+            <div className="admin-modal-actions">
+
+              <button
+                type="button"
+                className="admin-modal-cancel"
+                onClick={
+                  closeConfirmModal
+                }
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className={
+                  confirmModal.type ===
+                  "danger"
+                    ? "admin-modal-confirm danger"
+                    : "admin-modal-confirm"
+                }
+                onClick={() => {
+                  if (
+                    typeof confirmModal.onConfirm ===
+                    "function"
+                  ) {
+                    confirmModal.onConfirm();
+                  }
+                }}
+              >
+                {confirmModal.confirmText}
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
     </div>
   );
