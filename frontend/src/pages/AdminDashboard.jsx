@@ -1,15 +1,21 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import "../Dashboard.css";
 
 function AdminDashboard() {
   const navigate = useNavigate();
+
+  /* =====================================================
+     STORAGE KEYS
+  ===================================================== */
+
+  const STORAGE_KEYS = {
+    currentUser: "jobconnect_current_user",
+    users: "jobconnect_users",
+    jobs: "jobconnect_jobs",
+    applications: "jobconnect_applications",
+  };
 
   /* =====================================================
      STATES
@@ -33,40 +39,15 @@ function AdminDashboard() {
   const [jobTypeFilter, setJobTypeFilter] = useState("all");
 
   // Application filters
-  const [applicationSearch, setApplicationSearch] =
-    useState("");
-
+  const [applicationSearch, setApplicationSearch] = useState("");
   const [applicationStatusFilter, setApplicationStatusFilter] =
     useState("all");
 
   /* =====================================================
-     MODAL STATE
+     SAFE STORAGE HELPERS
   ===================================================== */
 
-  const [confirmModal, setConfirmModal] = useState({
-    open: false,
-    title: "",
-    message: "",
-    confirmText: "Delete",
-    type: "danger",
-    onConfirm: null,
-  });
-
-  /* =====================================================
-     TOAST STATE
-  ===================================================== */
-
-  const [toast, setToast] = useState({
-    visible: false,
-    type: "success",
-    message: "",
-  });
-
-  /* =====================================================
-     SAFE ARRAY PARSER
-  ===================================================== */
-
-  const readArrayFromStorage = (key) => {
+  const readArrayFromStorage = useCallback((key) => {
     try {
       const value = localStorage.getItem(key);
 
@@ -79,68 +60,58 @@ function AdminDashboard() {
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
       console.error(`Error reading ${key}:`, error);
-
       return [];
     }
-  };
+  }, []);
+
+  const saveArrayToStorage = useCallback((key, data) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+      return true;
+    } catch (error) {
+      console.error(`Error saving ${key}:`, error);
+      alert("Unable to save changes. Please try again.");
+      return false;
+    }
+  }, []);
 
   /* =====================================================
-     TOAST HELPER
+     FORMATTERS
   ===================================================== */
 
-  const showToast = useCallback(
-    (message, type = "success") => {
-      setToast({
-        visible: true,
-        type,
-        message,
-      });
+  const formatDate = useCallback((value) => {
+    if (!value) {
+      return "Recently";
+    }
 
-      window.setTimeout(() => {
-        setToast((current) => ({
-          ...current,
-          visible: false,
-        }));
-      }, 3000);
-    },
-    []
-  );
+    const date = new Date(value);
 
-  /* =====================================================
-     CLOSE MODAL
-  ===================================================== */
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
 
-  const closeConfirmModal = () => {
-    setConfirmModal({
-      open: false,
-      title: "",
-      message: "",
-      confirmText: "Delete",
-      type: "danger",
-      onConfirm: null,
-    });
-  };
+    return date.toLocaleString();
+  }, []);
 
-  /* =====================================================
-     OPEN CONFIRMATION MODAL
-  ===================================================== */
+  const normalize = useCallback((value) => {
+    return String(value || "")
+      .toLowerCase()
+      .trim();
+  }, []);
 
-  const openConfirmModal = ({
-    title,
-    message,
-    confirmText = "Delete",
-    type = "danger",
-    onConfirm,
-  }) => {
-    setConfirmModal({
-      open: true,
-      title,
-      message,
-      confirmText,
-      type,
-      onConfirm,
-    });
-  };
+  const getStatusClass = useCallback((status) => {
+    return String(status || "Applied")
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+  }, []);
+
+  const getUserName = useCallback((user) => {
+    return user?.name || "Unknown User";
+  }, []);
+
+  const getJobRecruiterId = useCallback((job) => {
+    return job?.recruiterId ?? job?.userId ?? null;
+  }, []);
 
   /* =====================================================
      LOAD ADMIN DATA
@@ -148,12 +119,12 @@ function AdminDashboard() {
 
   const loadAdminData = useCallback(() => {
     const savedUser = localStorage.getItem(
-      "jobconnect_current_user"
+      STORAGE_KEYS.currentUser
     );
 
     if (!savedUser) {
       setAdmin(null);
-      navigate("/admin-login");
+      navigate("/admin-login", { replace: true });
       return;
     }
 
@@ -162,15 +133,14 @@ function AdminDashboard() {
     try {
       currentUser = JSON.parse(savedUser);
     } catch (error) {
-      console.error("Invalid admin data:", error);
+      console.error("Invalid current user data:", error);
 
-      localStorage.removeItem(
-        "jobconnect_current_user"
-      );
+      localStorage.removeItem(STORAGE_KEYS.currentUser);
 
       setAdmin(null);
 
-      navigate("/admin-login");
+      navigate("/admin-login", { replace: true });
+
       return;
     }
 
@@ -180,33 +150,39 @@ function AdminDashboard() {
 
     if (!currentUser || currentUser.role !== "admin") {
       setAdmin(null);
-      navigate("/");
+
+      navigate("/", { replace: true });
+
       return;
     }
 
     setAdmin(currentUser);
 
     /* ---------------------------------------------
-       LOAD DATA
+       LOAD PLATFORM DATA
     --------------------------------------------- */
 
-    const savedUsers =
-      readArrayFromStorage("jobconnect_users");
+    const savedUsers = readArrayFromStorage(
+      STORAGE_KEYS.users
+    );
 
-    const savedJobs =
-      readArrayFromStorage("jobconnect_jobs");
+    const savedJobs = readArrayFromStorage(
+      STORAGE_KEYS.jobs
+    );
 
-    const savedApplications =
-      readArrayFromStorage(
-        "jobconnect_applications"
-      );
+    const savedApplications = readArrayFromStorage(
+      STORAGE_KEYS.applications
+    );
 
     setUsers(savedUsers);
     setJobs(savedJobs);
     setApplications(savedApplications);
 
     setLastUpdated(new Date());
-  }, [navigate]);
+  }, [
+    navigate,
+    readArrayFromStorage,
+  ]);
 
   /* =====================================================
      INITIAL LOAD + EVENTS
@@ -224,12 +200,17 @@ function AdminDashboard() {
       "jobDeleted",
       "jobUpdated",
       "applicationsUpdated",
+      "storage",
     ];
+
+    const handleDataChange = () => {
+      loadAdminData();
+    };
 
     events.forEach((eventName) => {
       window.addEventListener(
         eventName,
-        loadAdminData
+        handleDataChange
       );
     });
 
@@ -237,35 +218,11 @@ function AdminDashboard() {
       events.forEach((eventName) => {
         window.removeEventListener(
           eventName,
-          loadAdminData
+          handleDataChange
         );
       });
     };
   }, [loadAdminData]);
-
-  /* =====================================================
-     ESC KEY FOR MODAL
-  ===================================================== */
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        closeConfirmModal();
-      }
-    };
-
-    window.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
-
-    return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
-    };
-  }, []);
 
   /* =====================================================
      MANUAL REFRESH
@@ -282,11 +239,6 @@ function AdminDashboard() {
 
     window.setTimeout(() => {
       setRefreshing(false);
-
-      showToast(
-        "Dashboard data refreshed successfully.",
-        "success"
-      );
     }, 500);
   };
 
@@ -296,7 +248,7 @@ function AdminDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem(
-      "jobconnect_current_user"
+      STORAGE_KEYS.currentUser
     );
 
     setAdmin(null);
@@ -305,7 +257,7 @@ function AdminDashboard() {
       new Event("userLogout")
     );
 
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   /* =====================================================
@@ -319,26 +271,53 @@ function AdminDashboard() {
     );
 
     if (!userToDelete) {
-      showToast(
-        "User not found.",
-        "error"
+      alert("User not found.");
+      return;
+    }
+
+    /* ---------------------------------------------
+       PROTECT ADMIN ACCOUNTS
+    --------------------------------------------- */
+
+    if (userToDelete.role === "admin") {
+      alert("Admin accounts cannot be deleted.");
+      return;
+    }
+
+    /* ---------------------------------------------
+       PROTECT CURRENT ADMIN
+    --------------------------------------------- */
+
+    if (
+      admin &&
+      String(userToDelete.id) ===
+        String(admin.id)
+    ) {
+      alert(
+        "You cannot delete the currently logged-in admin."
       );
 
       return;
     }
 
     /* ---------------------------------------------
-       PROTECT ADMIN
+       CONFIRM
     --------------------------------------------- */
 
-    if (userToDelete.role === "admin") {
-      showToast(
-        "Admin accounts cannot be deleted.",
-        "error"
-      );
+    const confirmDelete = window.confirm(
+      `Delete ${
+        userToDelete.name || "this user"
+      }?\n\n` +
+        "This will also remove their related jobs and applications."
+    );
 
+    if (!confirmDelete) {
       return;
     }
+
+    /* ---------------------------------------------
+       FIND USER JOBS
+    --------------------------------------------- */
 
     const recruiterJobs = jobs.filter(
       (job) =>
@@ -353,16 +332,39 @@ function AdminDashboard() {
         String(job.id)
       );
 
-    const relatedApplications =
+    /* ---------------------------------------------
+       REMOVE USER
+    --------------------------------------------- */
+
+    const updatedUsers = users.filter(
+      (user) =>
+        String(user.id) !==
+        String(userId)
+    );
+
+    /* ---------------------------------------------
+       REMOVE JOBS
+    --------------------------------------------- */
+
+    const updatedJobs = jobs.filter(
+      (job) =>
+        !recruiterJobIds.includes(
+          String(job.id)
+        )
+    );
+
+    /* ---------------------------------------------
+       REMOVE RELATED APPLICATIONS
+    --------------------------------------------- */
+
+    const updatedApplications =
       applications.filter(
         (application) => {
           const belongsToCandidate =
-            String(
-              application.userId
-            ) === String(userId) ||
-            String(
-              application.candidateId
-            ) === String(userId);
+            String(application.userId) ===
+              String(userId) ||
+            String(application.candidateId) ===
+              String(userId);
 
           const belongsToRecruiterJob =
             recruiterJobIds.includes(
@@ -370,136 +372,73 @@ function AdminDashboard() {
             );
 
           return (
-            belongsToCandidate ||
-            belongsToRecruiterJob
+            !belongsToCandidate &&
+            !belongsToRecruiterJob
           );
         }
       );
 
-    openConfirmModal({
-      title: "Delete User?",
-      message:
-        `You are about to permanently delete ${
-          userToDelete.name ||
-          "this user"
-        }.\n\n` +
-        `${recruiterJobs.length} related job(s) and ` +
-        `${relatedApplications.length} related application(s) ` +
-        `will also be removed.`,
+    /* ---------------------------------------------
+       SAVE ALL CHANGES
+    --------------------------------------------- */
 
-      confirmText: "Delete User",
+    const usersSaved =
+      saveArrayToStorage(
+        STORAGE_KEYS.users,
+        updatedUsers
+      );
 
-      type: "danger",
+    const jobsSaved =
+      saveArrayToStorage(
+        STORAGE_KEYS.jobs,
+        updatedJobs
+      );
 
-      onConfirm: () => {
-        /* -----------------------------------------
-           REMOVE USER
-        ----------------------------------------- */
+    const applicationsSaved =
+      saveArrayToStorage(
+        STORAGE_KEYS.applications,
+        updatedApplications
+      );
 
-        const updatedUsers = users.filter(
-          (user) =>
-            String(user.id) !==
-            String(userId)
-        );
+    if (
+      !usersSaved ||
+      !jobsSaved ||
+      !applicationsSaved
+    ) {
+      return;
+    }
 
-        /* -----------------------------------------
-           REMOVE JOBS
-        ----------------------------------------- */
+    /* ---------------------------------------------
+       UPDATE STATE
+    --------------------------------------------- */
 
-        const updatedJobs = jobs.filter(
-          (job) =>
-            !recruiterJobIds.includes(
-              String(job.id)
-            )
-        );
+    setUsers(updatedUsers);
+    setJobs(updatedJobs);
+    setApplications(
+      updatedApplications
+    );
 
-        /* -----------------------------------------
-           REMOVE APPLICATIONS
-        ----------------------------------------- */
+    setLastUpdated(new Date());
 
-        const updatedApplications =
-          applications.filter(
-            (application) => {
-              const belongsToCandidate =
-                String(
-                  application.userId
-                ) === String(userId) ||
-                String(
-                  application.candidateId
-                ) === String(userId);
+    /* ---------------------------------------------
+       EVENTS
+    --------------------------------------------- */
 
-              const belongsToRecruiterJob =
-                recruiterJobIds.includes(
-                  String(application.jobId)
-                );
+    window.dispatchEvent(
+      new Event("userDeleted")
+    );
 
-              return (
-                !belongsToCandidate &&
-                !belongsToRecruiterJob
-              );
-            }
-          );
+    window.dispatchEvent(
+      new Event("jobDeleted")
+    );
 
-        /* -----------------------------------------
-           SAVE
-        ----------------------------------------- */
+    window.dispatchEvent(
+      new Event("applicationsUpdated")
+    );
 
-        localStorage.setItem(
-          "jobconnect_users",
-          JSON.stringify(updatedUsers)
-        );
-
-        localStorage.setItem(
-          "jobconnect_jobs",
-          JSON.stringify(updatedJobs)
-        );
-
-        localStorage.setItem(
-          "jobconnect_applications",
-          JSON.stringify(
-            updatedApplications
-          )
-        );
-
-        /* -----------------------------------------
-           STATE
-        ----------------------------------------- */
-
-        setUsers(updatedUsers);
-        setJobs(updatedJobs);
-        setApplications(
-          updatedApplications
-        );
-
-        /* -----------------------------------------
-           EVENTS
-        ----------------------------------------- */
-
-        window.dispatchEvent(
-          new Event("userDeleted")
-        );
-
-        window.dispatchEvent(
-          new Event("jobDeleted")
-        );
-
-        window.dispatchEvent(
-          new Event("applicationsUpdated")
-        );
-
-        setLastUpdated(new Date());
-
-        showToast(
-          `${
-            userToDelete.name ||
-            "User"
-          } deleted successfully.`,
-          "success"
-        );
-
-        closeConfirmModal();
-      },
-    });
+    alert(
+      `${userToDelete.name || "User"} deleted successfully.`
+    );
   };
 
   /* =====================================================
@@ -514,106 +453,100 @@ function AdminDashboard() {
     );
 
     if (!jobToDelete) {
-      showToast(
-        "Job not found.",
-        "error"
-      );
-
+      alert("Job not found.");
       return;
     }
 
     const relatedApplications =
       applications.filter(
         (application) =>
-          String(
-            application.jobId
-          ) === String(jobId)
+          String(application.jobId) ===
+          String(jobId)
       );
 
-    openConfirmModal({
-      title: "Delete Job?",
-      message:
-        `You are about to permanently delete "${
-          jobToDelete.title ||
-          "this job"
-        }".\n\n` +
-        `${relatedApplications.length} related application(s) ` +
-        `will also be deleted.`,
+    const confirmDelete = window.confirm(
+      `Delete "${
+        jobToDelete.title ||
+        "this job"
+      }"?\n\n` +
+        `${relatedApplications.length} related application(s) will also be deleted.`
+    );
 
-      confirmText: "Delete Job",
+    if (!confirmDelete) {
+      return;
+    }
 
-      type: "danger",
+    /* ---------------------------------------------
+       REMOVE JOB
+    --------------------------------------------- */
 
-      onConfirm: () => {
-        /* -----------------------------------------
-           REMOVE JOB
-        ----------------------------------------- */
+    const updatedJobs = jobs.filter(
+      (job) =>
+        String(job.id) !==
+        String(jobId)
+    );
 
-        const updatedJobs = jobs.filter(
-          (job) =>
-            String(job.id) !==
-            String(jobId)
-        );
+    /* ---------------------------------------------
+       REMOVE APPLICATIONS
+    --------------------------------------------- */
 
-        /* -----------------------------------------
-           REMOVE APPLICATIONS
-        ----------------------------------------- */
+    const updatedApplications =
+      applications.filter(
+        (application) =>
+          String(application.jobId) !==
+          String(jobId)
+      );
 
-        const updatedApplications =
-          applications.filter(
-            (application) =>
-              String(
-                application.jobId
-              ) !== String(jobId)
-          );
+    /* ---------------------------------------------
+       SAVE
+    --------------------------------------------- */
 
-        /* -----------------------------------------
-           SAVE
-        ----------------------------------------- */
+    const jobsSaved =
+      saveArrayToStorage(
+        STORAGE_KEYS.jobs,
+        updatedJobs
+      );
 
-        localStorage.setItem(
-          "jobconnect_jobs",
-          JSON.stringify(updatedJobs)
-        );
+    const applicationsSaved =
+      saveArrayToStorage(
+        STORAGE_KEYS.applications,
+        updatedApplications
+      );
 
-        localStorage.setItem(
-          "jobconnect_applications",
-          JSON.stringify(
-            updatedApplications
-          )
-        );
+    if (
+      !jobsSaved ||
+      !applicationsSaved
+    ) {
+      return;
+    }
 
-        /* -----------------------------------------
-           STATE
-        ----------------------------------------- */
+    /* ---------------------------------------------
+       UPDATE STATE
+    --------------------------------------------- */
 
-        setJobs(updatedJobs);
-        setApplications(
-          updatedApplications
-        );
+    setJobs(updatedJobs);
 
-        /* -----------------------------------------
-           EVENTS
-        ----------------------------------------- */
+    setApplications(
+      updatedApplications
+    );
 
-        window.dispatchEvent(
-          new Event("jobDeleted")
-        );
+    setLastUpdated(new Date());
 
-        window.dispatchEvent(
-          new Event("applicationsUpdated")
-        );
+    /* ---------------------------------------------
+       EVENTS
+    --------------------------------------------- */
 
-        setLastUpdated(new Date());
+    window.dispatchEvent(
+      new Event("jobDeleted")
+    );
 
-        showToast(
-          "Job and related applications deleted successfully.",
-          "success"
-        );
+    window.dispatchEvent(
+      new Event("applicationsUpdated")
+    );
 
-        closeConfirmModal();
-      },
-    });
+    alert(
+      "Job and related applications deleted successfully."
+    );
   };
 
   /* =====================================================
@@ -631,59 +564,49 @@ function AdminDashboard() {
       );
 
     if (!application) {
-      showToast(
-        "Application not found.",
-        "error"
-      );
-
+      alert("Application not found.");
       return;
     }
 
-    openConfirmModal({
-      title: "Delete Application?",
-      message:
-        "This application will be permanently removed from JobConnect.",
+    const confirmDelete =
+      window.confirm(
+        "Are you sure you want to delete this application?"
+      );
 
-      confirmText:
-        "Delete Application",
+    if (!confirmDelete) {
+      return;
+    }
 
-      type: "danger",
+    const updatedApplications =
+      applications.filter(
+        (item) =>
+          String(item.id) !==
+          String(applicationId)
+      );
 
-      onConfirm: () => {
-        const updatedApplications =
-          applications.filter(
-            (item) =>
-              String(item.id) !==
-              String(applicationId)
-          );
+    const saved =
+      saveArrayToStorage(
+        STORAGE_KEYS.applications,
+        updatedApplications
+      );
 
-        localStorage.setItem(
-          "jobconnect_applications",
-          JSON.stringify(
-            updatedApplications
-          )
-        );
+    if (!saved) {
+      return;
+    }
 
-        setApplications(
-          updatedApplications
-        );
+    setApplications(
+      updatedApplications
+    );
 
-        window.dispatchEvent(
-          new Event(
-            "applicationsUpdated"
-          )
-        );
+    setLastUpdated(new Date());
 
-        setLastUpdated(new Date());
+    window.dispatchEvent(
+      new Event("applicationsUpdated")
+    );
 
-        showToast(
-          "Application deleted successfully.",
-          "success"
-        );
-
-        closeConfirmModal();
-      },
-    });
+    alert(
+      "Application deleted successfully."
+    );
   };
 
   /* =====================================================
@@ -702,11 +625,7 @@ function AdminDashboard() {
       );
 
     if (!exists) {
-      showToast(
-        "Application not found.",
-        "error"
-      );
-
+      alert("Application not found.");
       return;
     }
 
@@ -723,93 +642,82 @@ function AdminDashboard() {
           return {
             ...application,
             status: newStatus,
+            updatedAt:
+              new Date().toISOString(),
           };
         }
       );
 
-    localStorage.setItem(
-      "jobconnect_applications",
-      JSON.stringify(
+    const saved =
+      saveArrayToStorage(
+        STORAGE_KEYS.applications,
         updatedApplications
-      )
-    );
+      );
+
+    if (!saved) {
+      return;
+    }
 
     setApplications(
       updatedApplications
     );
 
-    window.dispatchEvent(
-      new Event(
-        "applicationsUpdated"
-      )
-    );
-
     setLastUpdated(new Date());
 
-    showToast(
-      `Application status updated to ${newStatus}.`,
-      "success"
+    window.dispatchEvent(
+      new Event("applicationsUpdated")
     );
+  };
+
+  /* =====================================================
+     CLEAR FILTERS
+  ===================================================== */
+
+  const clearUserFilters = () => {
+    setUserSearch("");
+    setUserRoleFilter("all");
+  };
+
+  const clearJobFilters = () => {
+    setJobSearch("");
+    setJobTypeFilter("all");
+  };
+
+  const clearApplicationFilters = () => {
+    setApplicationSearch("");
+    setApplicationStatusFilter("all");
   };
 
   /* =====================================================
      USER COUNTS
   ===================================================== */
 
-  const candidateCount =
-    users.filter(
-      (user) =>
-        user.role === "candidate"
-    ).length;
+  const candidateCount = useMemo(
+    () =>
+      users.filter(
+        (user) =>
+          user.role === "candidate"
+      ).length,
+    [users]
+  );
 
-  const recruiterCount =
-    users.filter(
-      (user) =>
-        user.role === "recruiter"
-    ).length;
+  const recruiterCount = useMemo(
+    () =>
+      users.filter(
+        (user) =>
+          user.role === "recruiter"
+      ).length,
+    [users]
+  );
 
-  const adminCount =
-    users.filter(
-      (user) =>
-        user.role === "admin"
-    ).length;
-
-  /* =====================================================
-     USER FILTERS
-  ===================================================== */
-
-  const filteredUsers = useMemo(() => {
-    const search =
-      userSearch
-        .toLowerCase()
-        .trim();
-
-    return users.filter((user) => {
-      const userName =
-        (user.name || "").toLowerCase();
-
-      const userEmail =
-        (user.email || "").toLowerCase();
-
-      const matchesSearch =
-        !search ||
-        userName.includes(search) ||
-        userEmail.includes(search);
-
-      const matchesRole =
-        userRoleFilter === "all" ||
-        user.role === userRoleFilter;
-
-      return (
-        matchesSearch &&
-        matchesRole
-      );
-    });
-  }, [
-    users,
-    userSearch,
-    userRoleFilter,
-  ]);
+  const adminCount = useMemo(
+    () =>
+      users.filter(
+        (user) =>
+          user.role === "admin"
+      ).length,
+    [users]
+  );
 
   /* =====================================================
      JOB TYPES
@@ -818,8 +726,7 @@ function AdminDashboard() {
   const jobTypes = useMemo(() => {
     const types = jobs
       .map((job) =>
-        String(job.type || "")
-          .trim()
+        String(job.type || "").trim()
       )
       .filter(Boolean);
 
@@ -827,27 +734,119 @@ function AdminDashboard() {
   }, [jobs]);
 
   /* =====================================================
-     FILTER JOBS
+     APPLICATION COUNTS
+  ===================================================== */
+
+  const applicationCounts =
+    useMemo(() => {
+      let applied = 0;
+      let pending = 0;
+      let accepted = 0;
+      let rejected = 0;
+
+      applications.forEach(
+        (application) => {
+          const status =
+            application.status ||
+            "Applied";
+
+          if (status === "Applied") {
+            applied++;
+          } else if (
+            status === "Pending"
+          ) {
+            pending++;
+          } else if (
+            status === "Accepted"
+          ) {
+            accepted++;
+          } else if (
+            status === "Rejected"
+          ) {
+            rejected++;
+          } else {
+            applied++;
+          }
+        }
+      );
+
+      return {
+        applied,
+        pending,
+        accepted,
+        rejected,
+      };
+    }, [applications]);
+
+  const pendingCount =
+    applicationCounts.applied +
+    applicationCounts.pending;
+
+  const acceptedCount =
+    applicationCounts.accepted;
+
+  const rejectedCount =
+    applicationCounts.rejected;
+
+  /* =====================================================
+     USER FILTERS
+  ===================================================== */
+
+  const filteredUsers = useMemo(() => {
+    const search =
+      normalize(userSearch);
+
+    return users.filter(
+      (user) => {
+        const userName =
+          normalize(user.name);
+
+        const userEmail =
+          normalize(user.email);
+
+        const matchesSearch =
+          !search ||
+          userName.includes(search) ||
+          userEmail.includes(search);
+
+        const matchesRole =
+          userRoleFilter === "all" ||
+          user.role ===
+            userRoleFilter;
+
+        return (
+          matchesSearch &&
+          matchesRole
+        );
+      }
+    );
+  }, [
+    users,
+    userSearch,
+    userRoleFilter,
+    normalize,
+  ]);
+
+  /* =====================================================
+     JOB FILTERS
   ===================================================== */
 
   const filteredJobs = useMemo(() => {
     const search =
-      jobSearch
-        .toLowerCase()
-        .trim();
+      normalize(jobSearch);
 
     return jobs.filter((job) => {
       const title =
-        (job.title || "").toLowerCase();
+        normalize(job.title);
 
       const company =
-        (job.company || "").toLowerCase();
+        normalize(job.company);
 
       const location =
-        (job.location || "").toLowerCase();
+        normalize(job.location);
 
       const type =
-        (job.type || "").toLowerCase();
+        normalize(job.type);
 
       const matchesSearch =
         !search ||
@@ -858,7 +857,8 @@ function AdminDashboard() {
 
       const matchesType =
         jobTypeFilter === "all" ||
-        job.type === jobTypeFilter;
+        String(job.type || "") ===
+          String(jobTypeFilter);
 
       return (
         matchesSearch &&
@@ -869,39 +869,8 @@ function AdminDashboard() {
     jobs,
     jobSearch,
     jobTypeFilter,
+    normalize,
   ]);
-
-  /* =====================================================
-     APPLICATION COUNTS
-  ===================================================== */
-
-  const pendingCount =
-    applications.filter(
-      (application) => {
-        const status =
-          application.status ||
-          "Applied";
-
-        return (
-          status === "Applied" ||
-          status === "Pending"
-        );
-      }
-    ).length;
-
-  const acceptedCount =
-    applications.filter(
-      (application) =>
-        application.status ===
-        "Accepted"
-    ).length;
-
-  const rejectedCount =
-    applications.filter(
-      (application) =>
-        application.status ===
-        "Rejected"
-    ).length;
 
   /* =====================================================
      APPLICATION FILTERS
@@ -910,9 +879,7 @@ function AdminDashboard() {
   const filteredApplications =
     useMemo(() => {
       const search =
-        applicationSearch
-          .toLowerCase()
-          .trim();
+        normalize(applicationSearch);
 
       return applications.filter(
         (application) => {
@@ -921,29 +888,26 @@ function AdminDashboard() {
             "Applied";
 
           const candidateName =
-            (
-              application.candidateName ||
-              ""
-            ).toLowerCase();
+            normalize(
+              application.candidateName
+            );
 
           const candidateEmail =
-            (
+            normalize(
               application.candidateEmail ||
-              application.userEmail ||
-              ""
-            ).toLowerCase();
+                application.userEmail
+            );
 
           const jobTitle =
-            (
+            normalize(
               application.title ||
-              ""
-            ).toLowerCase();
+                application.jobTitle
+            );
 
           const company =
-            (
-              application.company ||
-              ""
-            ).toLowerCase();
+            normalize(
+              application.company
+            );
 
           const matchesSearch =
             !search ||
@@ -953,9 +917,7 @@ function AdminDashboard() {
             candidateEmail.includes(
               search
             ) ||
-            jobTitle.includes(
-              search
-            ) ||
+            jobTitle.includes(search) ||
             company.includes(search);
 
           const matchesStatus =
@@ -974,6 +936,7 @@ function AdminDashboard() {
       applications,
       applicationSearch,
       applicationStatusFilter,
+      normalize,
     ]);
 
   /* =====================================================
@@ -983,12 +946,87 @@ function AdminDashboard() {
   const recentApplications =
     useMemo(() => {
       return [...applications]
-        .slice(-5)
-        .reverse();
+        .sort((a, b) => {
+          const dateA =
+            new Date(
+              a.appliedAt ||
+                a.createdAt ||
+                0
+            ).getTime();
+
+          const dateB =
+            new Date(
+              b.appliedAt ||
+                b.createdAt ||
+                0
+            ).getTime();
+
+          return dateB - dateA;
+        })
+        .slice(0, 5);
     }, [applications]);
 
   /* =====================================================
-     LOADING
+     JOB APPLICATION COUNTS
+  ===================================================== */
+
+  const jobApplicationCounts =
+    useMemo(() => {
+      const counts = {};
+
+      applications.forEach(
+        (application) => {
+          const jobId =
+            String(
+              application.jobId
+            );
+
+          counts[jobId] =
+            (counts[jobId] || 0) + 1;
+        }
+      );
+
+      return counts;
+    }, [applications]);
+
+  /* =====================================================
+     RECRUITER LOOKUP
+  ===================================================== */
+
+  const usersById = useMemo(() => {
+    const map = {};
+
+    users.forEach((user) => {
+      map[String(user.id)] =
+        user;
+    });
+
+    return map;
+  }, [users]);
+
+  /* =====================================================
+     PLATFORM STATISTICS
+  ===================================================== */
+
+  const averageApplicationsPerJob =
+    jobs.length > 0
+      ? (
+          applications.length /
+          jobs.length
+        ).toFixed(1)
+      : "0.0";
+
+  const applicationSuccessRate =
+    applications.length > 0
+      ? (
+          (acceptedCount /
+            applications.length) *
+          100
+        ).toFixed(1)
+      : "0.0";
+
+  /* =====================================================
+     LOADING / AUTH
   ===================================================== */
 
   if (!admin) {
@@ -1001,43 +1039,6 @@ function AdminDashboard() {
 
   return (
     <div className="dashboard-page">
-
-      {/* =================================================
-          TOAST
-      ================================================= */}
-
-      {toast.visible && (
-        <div
-          className={`admin-toast ${
-            toast.type === "error"
-              ? "admin-toast-error"
-              : "admin-toast-success"
-          }`}
-        >
-          <span className="admin-toast-icon">
-            {toast.type === "error"
-              ? "⚠️"
-              : "✅"}
-          </span>
-
-          <span>
-            {toast.message}
-          </span>
-
-          <button
-            type="button"
-            onClick={() =>
-              setToast((current) => ({
-                ...current,
-                visible: false,
-              }))
-            }
-            aria-label="Close notification"
-          >
-            ×
-          </button>
-        </div>
-      )}
 
       <div className="dashboard-container">
 
@@ -1094,7 +1095,7 @@ function AdminDashboard() {
               disabled={refreshing}
             >
               {refreshing
-                ? "⏳ Refreshing..."
+                ? "Refreshing..."
                 : "🔄 Refresh"}
             </button>
 
@@ -1117,83 +1118,83 @@ function AdminDashboard() {
         <div className="dashboard-stats">
 
           <div className="stat-card">
+
             <div className="stat-icon">
               👥
             </div>
 
             <div>
-              <span>
-                Total Users
-              </span>
+              <span>Total Users</span>
 
               <strong>
                 {users.length}
               </strong>
             </div>
+
           </div>
 
           <div className="stat-card">
+
             <div className="stat-icon">
               👤
             </div>
 
             <div>
-              <span>
-                Candidates
-              </span>
+              <span>Candidates</span>
 
               <strong>
                 {candidateCount}
               </strong>
             </div>
+
           </div>
 
           <div className="stat-card">
+
             <div className="stat-icon">
               💼
             </div>
 
             <div>
-              <span>
-                Recruiters
-              </span>
+              <span>Recruiters</span>
 
               <strong>
                 {recruiterCount}
               </strong>
             </div>
+
           </div>
 
           <div className="stat-card">
+
             <div className="stat-icon">
               📋
             </div>
 
             <div>
-              <span>
-                Total Jobs
-              </span>
+              <span>Total Jobs</span>
 
               <strong>
                 {jobs.length}
               </strong>
             </div>
+
           </div>
 
           <div className="stat-card">
+
             <div className="stat-icon">
               📄
             </div>
 
             <div>
-              <span>
-                Applications
-              </span>
+              <span>Applications</span>
 
               <strong>
                 {applications.length}
               </strong>
             </div>
+
           </div>
 
         </div>
@@ -1220,67 +1221,67 @@ function AdminDashboard() {
           <div className="dashboard-stats">
 
             <div className="stat-card">
+
               <div className="stat-icon">
                 🛡️
               </div>
 
               <div>
-                <span>
-                  Admins
-                </span>
+                <span>Admins</span>
 
                 <strong>
                   {adminCount}
                 </strong>
               </div>
+
             </div>
 
             <div className="stat-card">
+
               <div className="stat-icon">
                 ⏳
               </div>
 
               <div>
-                <span>
-                  Pending
-                </span>
+                <span>Pending</span>
 
                 <strong>
                   {pendingCount}
                 </strong>
               </div>
+
             </div>
 
             <div className="stat-card">
+
               <div className="stat-icon">
                 ✅
               </div>
 
               <div>
-                <span>
-                  Accepted
-                </span>
+                <span>Accepted</span>
 
                 <strong>
                   {acceptedCount}
                 </strong>
               </div>
+
             </div>
 
             <div className="stat-card">
+
               <div className="stat-icon">
                 ❌
               </div>
 
               <div>
-                <span>
-                  Rejected
-                </span>
+                <span>Rejected</span>
 
                 <strong>
                   {rejectedCount}
                 </strong>
               </div>
+
             </div>
 
           </div>
@@ -1288,7 +1289,104 @@ function AdminDashboard() {
         </div>
 
         {/* =================================================
-            USERS
+            ANALYTICS
+        ================================================= */}
+
+        <div className="dashboard-section">
+
+          <div className="section-title">
+
+            <h2>
+              Platform Analytics
+            </h2>
+
+            <p>
+              Quick performance indicators
+              for JobConnect.
+            </p>
+
+          </div>
+
+          <div className="dashboard-stats">
+
+            <div className="stat-card">
+
+              <div className="stat-icon">
+                📊
+              </div>
+
+              <div>
+                <span>
+                  Avg. Applications / Job
+                </span>
+
+                <strong>
+                  {averageApplicationsPerJob}
+                </strong>
+              </div>
+
+            </div>
+
+            <div className="stat-card">
+
+              <div className="stat-icon">
+                📈
+              </div>
+
+              <div>
+                <span>
+                  Acceptance Rate
+                </span>
+
+                <strong>
+                  {applicationSuccessRate}%
+                </strong>
+              </div>
+
+            </div>
+
+            <div className="stat-card">
+
+              <div className="stat-icon">
+                🧑‍💼
+              </div>
+
+              <div>
+                <span>
+                  Recruiter Jobs
+                </span>
+
+                <strong>
+                  {jobs.length}
+                </strong>
+              </div>
+
+            </div>
+
+            <div className="stat-card">
+
+              <div className="stat-icon">
+                🔎
+              </div>
+
+              <div>
+                <span>
+                  Visible Applications
+                </span>
+
+                <strong>
+                  {filteredApplications.length}
+                </strong>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* =================================================
+            USERS SECTION
         ================================================= */}
 
         <div className="dashboard-section">
@@ -1344,11 +1442,26 @@ function AdminDashboard() {
               </option>
             </select>
 
+            {(userSearch ||
+              userRoleFilter !==
+                "all") && (
+              <button
+                type="button"
+                className="dashboard-post-btn"
+                onClick={
+                  clearUserFilters
+                }
+              >
+                Clear
+              </button>
+            )}
+
           </div>
 
           {users.length === 0 ? (
 
             <div className="empty-dashboard">
+
               <div className="empty-icon">
                 👥
               </div>
@@ -1361,11 +1474,14 @@ function AdminDashboard() {
                 Registered users will
                 appear here.
               </p>
+
             </div>
 
-          ) : filteredUsers.length === 0 ? (
+          ) : filteredUsers.length ===
+            0 ? (
 
             <div className="empty-dashboard">
+
               <div className="empty-icon">
                 🔎
               </div>
@@ -1375,9 +1491,10 @@ function AdminDashboard() {
               </h3>
 
               <p>
-                Try changing your
-                search or role filter.
+                Try changing your search
+                or role filter.
               </p>
+
             </div>
 
           ) : (
@@ -1407,8 +1524,7 @@ function AdminDashboard() {
                         <div>
 
                           <h3>
-                            {user.name ||
-                              "Unknown User"}
+                            {getUserName(user)}
                           </h3>
 
                           <p>
@@ -1419,17 +1535,7 @@ function AdminDashboard() {
 
                         </div>
 
-                        <span
-                          className={`application-status ${
-                            user.role ===
-                            "admin"
-                              ? "accepted"
-                              : user.role ===
-                                "recruiter"
-                              ? "pending"
-                              : "applied"
-                          }`}
-                        >
+                        <span className="application-status">
                           {user.role ===
                           "admin"
                             ? "Admin"
@@ -1441,9 +1547,29 @@ function AdminDashboard() {
 
                       </div>
 
+                      <div className="candidate-details">
+
+                        <span>
+                          🆔 ID:{" "}
+                          {user.id ??
+                            "N/A"}
+                        </span>
+
+                        {user.createdAt && (
+                          <span>
+                            📅 Registered:{" "}
+                            {formatDate(
+                              user.createdAt
+                            )}
+                          </span>
+                        )}
+
+                      </div>
+
                       <div className="application-actions">
 
-                        {user.role === "admin" ? (
+                        {user.role ===
+                        "admin" ? (
 
                           <span
                             style={{
@@ -1452,7 +1578,8 @@ function AdminDashboard() {
                                 "14px",
                             }}
                           >
-                            🛡️ Protected account
+                            🛡️ Protected
+                            account
                           </span>
 
                         ) : (
@@ -1487,7 +1614,7 @@ function AdminDashboard() {
         </div>
 
         {/* =================================================
-            JOBS
+            JOBS SECTION
         ================================================= */}
 
         <div className="dashboard-section">
@@ -1544,6 +1671,20 @@ function AdminDashboard() {
 
             </select>
 
+            {(jobSearch ||
+              jobTypeFilter !==
+                "all") && (
+              <button
+                type="button"
+                className="dashboard-post-btn"
+                onClick={
+                  clearJobFilters
+                }
+              >
+                Clear
+              </button>
+            )}
+
           </div>
 
           {jobs.length === 0 ? (
@@ -1565,7 +1706,8 @@ function AdminDashboard() {
 
             </div>
 
-          ) : filteredJobs.length === 0 ? (
+          ) : filteredJobs.length ===
+            0 ? (
 
             <div className="empty-dashboard">
 
@@ -1578,8 +1720,8 @@ function AdminDashboard() {
               </h3>
 
               <p>
-                Try changing your
-                search or job type filter.
+                Try changing your search
+                or job type filter.
               </p>
 
             </div>
@@ -1592,25 +1734,24 @@ function AdminDashboard() {
                 (job) => {
 
                   const jobApplicationCount =
-                    applications.filter(
-                      (application) =>
-                        String(
-                          application.jobId
-                        ) ===
-                        String(job.id)
-                    ).length;
+                    jobApplicationCounts[
+                      String(job.id)
+                    ] || 0;
+
+                  const recruiterId =
+                    getJobRecruiterId(
+                      job
+                    );
 
                   const recruiter =
-                    users.find(
-                      (user) =>
-                        String(
-                          user.id
-                        ) ===
-                        String(
-                          job.recruiterId ||
-                            job.userId
-                        )
-                    );
+                    recruiterId !==
+                    null
+                      ? usersById[
+                          String(
+                            recruiterId
+                          )
+                        ]
+                      : null;
 
                   return (
 
@@ -1640,8 +1781,9 @@ function AdminDashboard() {
                         {recruiter && (
                           <p>
                             👤 Recruiter:{" "}
-                            {recruiter.name ||
-                              "Unknown"}
+                            {getUserName(
+                              recruiter
+                            )}
                           </p>
                         )}
 
@@ -1667,12 +1809,23 @@ function AdminDashboard() {
 
                         </div>
 
+                        {job.createdAt && (
+                          <p>
+                            📅 Posted:{" "}
+                            {formatDate(
+                              job.createdAt
+                            )}
+                          </p>
+                        )}
+
                       </div>
 
                       <div className="job-application-info">
 
                         <strong>
-                          {jobApplicationCount}
+                          {
+                            jobApplicationCount
+                          }
                         </strong>
 
                         <span>
@@ -1706,7 +1859,7 @@ function AdminDashboard() {
         </div>
 
         {/* =================================================
-            APPLICATIONS
+            APPLICATIONS SECTION
         ================================================= */}
 
         <div className="dashboard-section">
@@ -1719,8 +1872,8 @@ function AdminDashboard() {
 
             <p>
               Review and manage
-              applications submitted
-              by candidates.
+              applications submitted by
+              candidates.
             </p>
 
           </div>
@@ -1730,17 +1883,43 @@ function AdminDashboard() {
             <div className="stat-card">
 
               <div className="stat-icon">
+                📝
+              </div>
+
+              <div>
+
+                <span>
+                  Applied
+                </span>
+
+                <strong>
+                  {
+                    applicationCounts.applied
+                  }
+                </strong>
+
+              </div>
+
+            </div>
+
+            <div className="stat-card">
+
+              <div className="stat-icon">
                 ⏳
               </div>
 
               <div>
+
                 <span>
                   Pending
                 </span>
 
                 <strong>
-                  {pendingCount}
+                  {
+                    applicationCounts.pending
+                  }
                 </strong>
+
               </div>
 
             </div>
@@ -1752,13 +1931,17 @@ function AdminDashboard() {
               </div>
 
               <div>
+
                 <span>
                   Accepted
                 </span>
 
                 <strong>
-                  {acceptedCount}
+                  {
+                    applicationCounts.accepted
+                  }
                 </strong>
+
               </div>
 
             </div>
@@ -1770,13 +1953,17 @@ function AdminDashboard() {
               </div>
 
               <div>
+
                 <span>
                   Rejected
                 </span>
 
                 <strong>
-                  {rejectedCount}
+                  {
+                    applicationCounts.rejected
+                  }
                 </strong>
+
               </div>
 
             </div>
@@ -1788,7 +1975,9 @@ function AdminDashboard() {
             <input
               type="text"
               placeholder="🔎 Search candidate, email, job or company..."
-              value={applicationSearch}
+              value={
+                applicationSearch
+              }
               onChange={(event) =>
                 setApplicationSearch(
                   event.target.value
@@ -1829,9 +2018,24 @@ function AdminDashboard() {
 
             </select>
 
+            {(applicationSearch ||
+              applicationStatusFilter !==
+                "all") && (
+              <button
+                type="button"
+                className="dashboard-post-btn"
+                onClick={
+                  clearApplicationFilters
+                }
+              >
+                Clear
+              </button>
+            )}
+
           </div>
 
-          {applications.length === 0 ? (
+          {applications.length ===
+          0 ? (
 
             <div className="empty-dashboard">
 
@@ -1850,7 +2054,8 @@ function AdminDashboard() {
 
             </div>
 
-          ) : filteredApplications.length === 0 ? (
+          ) : filteredApplications.length ===
+            0 ? (
 
             <div className="empty-dashboard">
 
@@ -1863,8 +2068,8 @@ function AdminDashboard() {
               </h3>
 
               <p>
-                Try changing your
-                search or status filter.
+                Try changing your search
+                or status filter.
               </p>
 
             </div>
@@ -1881,18 +2086,17 @@ function AdminDashboard() {
                     "Applied";
 
                   const statusClass =
-                    currentStatus
-                      .toLowerCase()
-                      .replace(
-                        /\s+/g,
-                        "-"
-                      );
+                    getStatusClass(
+                      currentStatus
+                    );
 
                   return (
 
                     <div
                       className="recruiter-application-card"
-                      key={application.id}
+                      key={
+                        application.id
+                      }
                     >
 
                       <div className="candidate-avatar">
@@ -1912,19 +2116,15 @@ function AdminDashboard() {
                           <div>
 
                             <h3>
-                              {
-                                application.candidateName ||
-                                "Candidate"
-                              }
+                              {application.candidateName ||
+                                "Candidate"}
                             </h3>
 
                             <p>
                               📧{" "}
-                              {
-                                application.candidateEmail ||
+                              {application.candidateEmail ||
                                 application.userEmail ||
-                                "No email"
-                              }
+                                "No email"}
                             </p>
 
                           </div>
@@ -1941,26 +2141,23 @@ function AdminDashboard() {
 
                           <span>
                             💼{" "}
-                            {
-                              application.title ||
-                              "Job"
-                            }
+                            {application.title ||
+                              application.jobTitle ||
+                              "Job"}
                           </span>
 
                           <span>
                             🏢{" "}
-                            {
-                              application.company ||
-                              "Company"
-                            }
+                            {application.company ||
+                              "Company"}
                           </span>
 
                           <span>
                             📅{" "}
-                            {
+                            {formatDate(
                               application.appliedAt ||
-                              "Recently"
-                            }
+                                application.createdAt
+                            )}
                           </span>
 
                         </div>
@@ -1971,10 +2168,13 @@ function AdminDashboard() {
                             value={
                               currentStatus
                             }
-                            onChange={(event) =>
+                            onChange={(
+                              event
+                            ) =>
                               updateApplicationStatus(
                                 application.id,
-                                event.target.value
+                                event.target
+                                  .value
                               )
                             }
                           >
@@ -2006,7 +2206,8 @@ function AdminDashboard() {
                               )
                             }
                           >
-                            🗑️ Delete Application
+                            🗑️ Delete
+                            Application
                           </button>
 
                         </div>
@@ -2026,7 +2227,7 @@ function AdminDashboard() {
         </div>
 
         {/* =================================================
-            RECENT APPLICATIONS
+            RECENT ACTIVITY
         ================================================= */}
 
         <div className="dashboard-section">
@@ -2044,7 +2245,8 @@ function AdminDashboard() {
 
           </div>
 
-          {recentApplications.length === 0 ? (
+          {recentApplications.length ===
+          0 ? (
 
             <div className="empty-dashboard">
 
@@ -2057,8 +2259,8 @@ function AdminDashboard() {
               </h3>
 
               <p>
-                Application activity will
-                appear here.
+                Application activity
+                will appear here.
               </p>
 
             </div>
@@ -2075,12 +2277,9 @@ function AdminDashboard() {
                     "Applied";
 
                   const statusClass =
-                    status
-                      .toLowerCase()
-                      .replace(
-                        /\s+/g,
-                        "-"
-                      );
+                    getStatusClass(
+                      status
+                    );
 
                   return (
 
@@ -2106,18 +2305,15 @@ function AdminDashboard() {
                           <div>
 
                             <h3>
-                              {
-                                application.candidateName ||
-                                "Candidate"
-                              }
+                              {application.candidateName ||
+                                "Candidate"}
                             </h3>
 
                             <p>
                               Applied for{" "}
-                              {
-                                application.title ||
-                                "a job"
-                              }
+                              {application.title ||
+                                application.jobTitle ||
+                                "a job"}
                             </p>
 
                           </div>
@@ -2134,18 +2330,16 @@ function AdminDashboard() {
 
                           <span>
                             🏢{" "}
-                            {
-                              application.company ||
-                              "Company"
-                            }
+                            {application.company ||
+                              "Company"}
                           </span>
 
                           <span>
                             📅{" "}
-                            {
+                            {formatDate(
                               application.appliedAt ||
-                              "Recently"
-                            }
+                                application.createdAt
+                            )}
                           </span>
 
                         </div>
@@ -2165,100 +2359,6 @@ function AdminDashboard() {
         </div>
 
       </div>
-
-      {/* =================================================
-          CONFIRMATION MODAL
-      ================================================= */}
-
-      {confirmModal.open && (
-        <div
-          className="admin-modal-overlay"
-          onMouseDown={(event) => {
-            if (
-              event.target ===
-              event.currentTarget
-            ) {
-              closeConfirmModal();
-            }
-          }}
-        >
-
-          <div
-            className="admin-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-modal-title"
-          >
-
-            <button
-              type="button"
-              className="admin-modal-close"
-              onClick={closeConfirmModal}
-              aria-label="Close modal"
-            >
-              ×
-            </button>
-
-            <div
-              className={`admin-modal-icon ${
-                confirmModal.type ===
-                "danger"
-                  ? "admin-modal-danger"
-                  : "admin-modal-warning"
-              }`}
-            >
-              {confirmModal.type ===
-              "danger"
-                ? "🗑️"
-                : "⚠️"}
-            </div>
-
-            <h2 id="admin-modal-title">
-              {confirmModal.title}
-            </h2>
-
-            <p>
-              {confirmModal.message}
-            </p>
-
-            <div className="admin-modal-actions">
-
-              <button
-                type="button"
-                className="admin-modal-cancel"
-                onClick={
-                  closeConfirmModal
-                }
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className={
-                  confirmModal.type ===
-                  "danger"
-                    ? "admin-modal-confirm danger"
-                    : "admin-modal-confirm"
-                }
-                onClick={() => {
-                  if (
-                    typeof confirmModal.onConfirm ===
-                    "function"
-                  ) {
-                    confirmModal.onConfirm();
-                  }
-                }}
-              >
-                {confirmModal.confirmText}
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-      )}
 
     </div>
   );
