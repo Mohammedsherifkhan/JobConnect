@@ -81,8 +81,15 @@ GET /api/jobs
 */
 const getAllJobs = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT
+    const {
+      title,
+      location,
+      job_type,
+      company
+    } = req.query;
+
+    let query = `
+      SELECT
         j.id,
         j.title,
         j.company,
@@ -97,8 +104,38 @@ const getAllJobs = async (req, res) => {
       FROM jobs j
       LEFT JOIN users u
         ON j.recruiter_id = u.id
-      ORDER BY j.created_at DESC`
-    );
+    `;
+
+    const conditions = [];
+    const values = [];
+
+    if (title) {
+      values.push(`%${title}%`);
+      conditions.push(`j.title ILIKE $${values.length}`);
+    }
+
+    if (location) {
+      values.push(`%${location}%`);
+      conditions.push(`j.location ILIKE $${values.length}`);
+    }
+
+    if (job_type) {
+      values.push(`%${job_type}%`);
+      conditions.push(`j.job_type ILIKE $${values.length}`);
+    }
+
+    if (company) {
+      values.push(`%${company}%`);
+      conditions.push(`j.company ILIKE $${values.length}`);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(" AND ")}`;
+    }
+
+    query += ` ORDER BY j.created_at DESC`;
+
+    const result = await pool.query(query, values);
 
     res.json({
       success: true,
