@@ -5,6 +5,7 @@ const pool = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
 const jobRoutes = require("./routes/jobRoutes");
+const applicationRoutes = require("./routes/applicationRoutes");
 
 const app = express();
 
@@ -16,6 +17,9 @@ app.use("/api/auth", authRoutes);
 
 // Job routes
 app.use("/api/jobs", jobRoutes);
+
+// Application routes
+app.use("/api/applications", applicationRoutes);
 
 // Home route
 app.get("/", (req, res) => {
